@@ -1,0 +1,58 @@
+# 忽略Python缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 忽略虚拟环境
+venv/
+env/
+ENV/
+
+# 忽略IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略美术素材（太大）
+美术素材/
+assets/
+assets_transparent/
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.gif
+
+# 但保留一些必要的图标
+!assets/icons/
+!assets/ui/
+
+# 忽略存档
+saves/
+*.sav
+
+# 忽略日志
+*.log
+
+# 忽略临时文件
+*.tmp
+*.bak
+~*
+
+# 忽略系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略打包文件
+dist/
+build/
+*.egg-info/
+
+# 忽略测试覆盖率
+.coverage
+htmlcov/
+
+# 忽略文档生成
+docs/_build/

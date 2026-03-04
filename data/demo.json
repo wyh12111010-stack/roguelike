@@ -1,0 +1,16 @@
+{
+  "types": ["melee", "ranged", "charge", "aoe", "homing", "summon"],
+  "names": ["近战", "远程", "突进", "范围", "追踪", "召唤"],
+  "route_tree": {
+    "0": [1],
+    "1": [2],
+    "2": [3],
+    "3": [4],
+    "4": [5],
+    "5": []
+  },
+  "default_health": 25,
+  "default_speed": 80,
+  "default_damage": 10,
+  "positions": [[30, 40], [50, 60], [70, 40]]
+}

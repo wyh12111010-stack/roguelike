@@ -1,0 +1,23 @@
+---
+description: 精灵图转各状态帧的提示词通用模板，主角/敌人/NPC 均适用
+globs: docs/**/*.md
+alwaysApply: false
+---
+
+# 转成各状态的帧 · 提示词模板
+
+为**新角色**（敌人、NPC 等）写「转成各状态的帧」提示词时，使用通用模板。
+
+**模板文件**：`docs/SPRITE_FRAME_PROMPT_TEMPLATE.md`
+
+**固定结构**：
+1. [Overall Format] - 2×2 网格，PNG 透明背景，像素风
+2. [Character Reference] - 人物以参考图为准，保持像素风
+3. [Crucial: Frame-by-Frame Physical Description] - 4 帧逐帧描述（替换为具体状态）
+4. [Liveliness and Material Detail] - 材质细节
+
+**要点**：每帧必须有明显差异；人物以参考图为准；保持像素风。
+
+**状态示例**：待机（悬浮 bobbing）、死亡（倒地序列）见模板文件。新状态按相同结构填写 Frame 1~4 的物理描述。
+
+**中间轴**：AI 生成的精灵图各帧可能中间轴不一致。预览工具默认对齐；游戏绘制时用 `sprite_loader.get_content_center(frame)` 以质心为锚点。

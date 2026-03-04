@@ -1,0 +1,7 @@
+﻿# 减少索引
+__pycache__/
+*.py[cod]
+*.pyo
+save.json
+*.log
+*.bat

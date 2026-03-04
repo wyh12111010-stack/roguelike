@@ -1,0 +1,46 @@
+{
+  "types": {
+    "melee": {
+      "label": "近战",
+      "color": [255, 100, 100],
+      "default_health": 25,
+      "default_speed": 90,
+      "default_damage": 12
+    },
+    "ranged": {
+      "label": "远程",
+      "color": [255, 180, 80],
+      "default_health": 18,
+      "default_speed": 60,
+      "default_damage": 10
+    },
+    "charge": {
+      "label": "突进",
+      "color": [200, 80, 200],
+      "default_health": 22,
+      "default_speed": 70,
+      "default_damage": 18
+    },
+    "aoe": {
+      "label": "范围",
+      "color": [255, 100, 255],
+      "default_health": 20,
+      "default_speed": 50,
+      "default_damage": 15
+    },
+    "homing": {
+      "label": "追踪",
+      "color": [100, 200, 255],
+      "default_health": 18,
+      "default_speed": 65,
+      "default_damage": 8
+    },
+    "summon": {
+      "label": "召唤",
+      "color": [100, 255, 150],
+      "default_health": 30,
+      "default_speed": 40,
+      "default_damage": 5
+    }
+  }
+}

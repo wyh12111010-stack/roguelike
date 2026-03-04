@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "scene": "combat",
+  "linggen_choice": 0,
+  "fabao_choice": 0,
+  "fabao_id": "sword",
+  "village_player_x": 600,
+  "village_player_y": 350,
+  "combat": {
+    "player": {
+      "x": 571,
+      "y": 213,
+      "health": 36,
+      "max_health": 70,
+      "mana": 100,
+      "max_mana": 100,
+      "lingshi": 51,
+      "linggen_id": "fire",
+      "fabao_id": "sword",
+      "accessories": [
+        [
+          "swift_debt",
+          2
+        ],
+        [
+          "glass_core",
+          2
+        ]
+      ],
+      "fabao_damage_pct": 0,
+      "fabao_speed_pct": 0,
+      "fabao_ids": [
+        "sword"
+      ],
+      "current_fabao_index": 0
+    },
+    "current_level": "segment_boss_1",
+    "kill_count": 20,
+    "demo_mode": false,
+    "demo_level": 0,
+    "in_shop": false,
+    "route_options": [
+      9
+    ],
+    "run_potions": 1,
+    "shop_daoyun_bought": true,
+    "shop_fabao_id": "needle",
+    "shop_refresh_remaining": 1,
+    "shop_shown_fabao_ids": [
+      "needle"
+    ]
+  }
+}

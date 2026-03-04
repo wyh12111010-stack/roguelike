@@ -1,0 +1,62 @@
+{
+  "daoyun": 0,
+  "unlocked_linggen": [
+    "fire"
+  ],
+  "unlocked_fabao": [
+    "sword"
+  ],
+  "unlocked_accessories": [
+    "dmg_s",
+    "mp"
+  ],
+  "unlocked_routes": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "base_health_bonus": 0,
+  "base_mana_bonus": 0,
+  "accessory_slots": 6,
+  "shop_refresh_count": 1,
+  "start_accessory_mode": 0,
+  "boss_cue_mode": 1,
+  "master_volume": 1.0,
+  "bgm_volume": 0.8,
+  "sfx_volume": 1.0,
+  "resolution_index": 0,
+  "fullscreen": false,
+  "pause_on_focus_lost": true,
+  "autosave_on_exit": true,
+  "keybinds": {
+    "move_up": 119,
+    "move_down": 115,
+    "move_left": 97,
+    "move_right": 100,
+    "dash": 1073742049,
+    "switch_fabao": 113,
+    "cast_spell": 101,
+    "partner_skill": 102,
+    "use_potion": 114,
+    "char_panel": 99,
+    "return_village": 114
+  },
+  "potion_stock": 0,
+  "potion_cap": 4,
+  "total_runs": 0,
+  "total_wins": 0,
+  "total_kills": 0,
+  "total_levels_cleared": 0,
+  "total_element_damage": 0,
+  "total_deaths": 0,
+  "partner_bond_levels": {},
+  "selected_partner_id": null,
+  "achievements": [],
+  "unlocked_features": [
+    "partner_heal",
+    "linggen_select",
+    "fabao_select"
+  ],
+  "erosion_level": 0
+}
