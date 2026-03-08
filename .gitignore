@@ -15,19 +15,19 @@ ENV/
 *.swp
 *.swo
 
-# 忽略美术素材（太大）
+# 忽略原始美术素材（源文件）
 美术素材/
-assets/
 assets_transparent/
-*.png
-*.jpg
-*.jpeg
 *.mp4
-*.gif
 
-# 但保留一些必要的图标
-!assets/icons/
-!assets/ui/
+# 允许 assets/ 目录下的游戏资产
+# 但排除过大的原始素材格式
+*.psd
+*.xcf
+*.aseprite
+
+# 忽略非资产目录的图片
+# （assets/ 内的 PNG 会被 git 追踪）
 
 # 忽略存档
 saves/
