@@ -3,10 +3,12 @@
 大地图 + 多房间，为村民预留空间。玩家移动至房间触发交互，传送门外出。
 参考：docs/VILLAGE_MAP_DESIGN.md、PARTNER_VILLAGER_INITIAL.md
 """
+
 import os
+
 import pygame
 
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_UI, get_font
+from config import COLOR_UI, SCREEN_HEIGHT, SCREEN_WIDTH, get_font
 
 # 伙伴立绘缓存 {partner_id: {"frames": [...], "pivots": [...], "single": bool}}
 _PARTNER_SPRITES = {}
@@ -20,10 +22,10 @@ VILLAGE_MAP_H = 700
 VILLAGE_MAP_RECT = pygame.Rect(0, 0, VILLAGE_MAP_W, VILLAGE_MAP_H)
 
 # 房间定义 (x, y, w, h)，相邻摆放，直接走过去
-ROOM_LINGGEN = pygame.Rect(150, 80, 260, 220)       # 灵根殿（玄真）
-ROOM_FABAO = pygame.Rect(450, 80, 260, 220)         # 炼器坊（铸心）
-ROOM_CENTER = pygame.Rect(300, 320, 260, 200)       # 中央（栖霞）
-ROOM_PORTAL = pygame.Rect(150, 540, 560, 110)       # 传送门厅
+ROOM_LINGGEN = pygame.Rect(150, 80, 260, 220)  # 灵根殿（玄真）
+ROOM_FABAO = pygame.Rect(450, 80, 260, 220)  # 炼器坊（铸心）
+ROOM_CENTER = pygame.Rect(300, 320, 260, 200)  # 中央（栖霞）
+ROOM_PORTAL = pygame.Rect(150, 540, 560, 110)  # 传送门厅
 
 # NPC 房间列表
 NPC_ROOMS = [
@@ -33,11 +35,11 @@ NPC_ROOMS = [
 ]
 
 # 5 位可治疗伙伴：平均分布在村庄各处，画面和谐不扎堆
-ROOM_XUANXIAO = pygame.Rect(30, 180, 100, 90)      # 玄霄 - 左上角
-ROOM_QINGLI = pygame.Rect(1050, 80, 100, 90)        # 青璃 - 右上角
-ROOM_CHIYUAN = pygame.Rect(1050, 320, 100, 90)      # 赤渊 - 右中
-ROOM_BILUO = pygame.Rect(1050, 560, 100, 90)       # 碧落 - 右下角
-ROOM_MOYU = pygame.Rect(30, 560, 100, 90)          # 墨羽 - 左下角
+ROOM_XUANXIAO = pygame.Rect(30, 180, 100, 90)  # 玄霄 - 左上角
+ROOM_QINGLI = pygame.Rect(1050, 80, 100, 90)  # 青璃 - 右上角
+ROOM_CHIYUAN = pygame.Rect(1050, 320, 100, 90)  # 赤渊 - 右中
+ROOM_BILUO = pygame.Rect(1050, 560, 100, 90)  # 碧落 - 右下角
+ROOM_MOYU = pygame.Rect(30, 560, 100, 90)  # 墨羽 - 左下角
 
 # 伙伴房间列表（用于绘制与碰撞）
 PARTNER_ROOMS = [
@@ -62,14 +64,15 @@ def _load_partner_sprite(partner_id):
         _PARTNER_SPRITES[partner_id] = None
         return None
     try:
-        from tools.sprite_loader import load_sprite_sheet_grid, get_content_center, play_animation
+        from tools.sprite_loader import get_content_center, load_sprite_sheet_grid
+
         sheet = pygame.image.load(path)
         if sheet.get_alpha() is None:
             sheet = sheet.convert()
         else:
             sheet = sheet.convert_alpha()
         w, h = sheet.get_width(), sheet.get_height()
-        
+
         # 判断网格类型
         if w == h and w >= 200:  # 大图，可能是 6×6 网格（288×288）
             # 尝试 6×6 网格（32 帧）
@@ -85,7 +88,7 @@ def _load_partner_sprite(partner_id):
             frames = [sheet]
             pivots = [get_content_center(sheet)]
             _PARTNER_SPRITES[partner_id] = {"frames": frames, "pivots": pivots, "single": True}
-        
+
         return _PARTNER_SPRITES[partner_id]
     except Exception as e:
         print(f"加载伙伴 {partner_id} 失败: {e}")
@@ -102,10 +105,11 @@ def _load_npc_sprite(npc_id):
         _NPC_SPRITES[npc_id] = None
         return None
     try:
-        from tools.sprite_loader import load_sprite_sheet_grid, get_content_center
+        from tools.sprite_loader import get_content_center, load_sprite_sheet_grid
+
         sheet = pygame.image.load(path).convert_alpha()
         w, h = sheet.get_width(), sheet.get_height()
-        
+
         # 判断网格类型
         if w == h and w >= 200:  # 大图，6×6 网格（288×288）
             all_frames = load_sprite_sheet_grid(path, 6, 6)
@@ -116,12 +120,13 @@ def _load_npc_sprite(npc_id):
             frames = [sheet]
             pivots = [get_content_center(sheet)]
             _NPC_SPRITES[npc_id] = {"frames": frames, "pivots": pivots}
-        
+
         return _NPC_SPRITES[npc_id]
     except Exception as e:
         print(f"加载 NPC {npc_id} 失败: {e}")
         _NPC_SPRITES[npc_id] = None
         return None
+
 
 # 传送门在传送门厅内
 EXIT_PORTAL = pygame.Rect(250, 565, 140, 70)
@@ -148,14 +153,14 @@ VILLAGE_UI = {
     "linggen_rects": [],
     "fabao_rects": [],
     "unlock_rects": [],
-    "growth_rects": [],     # [(rect, growth_type, cost)] 局外成长
-    "dialogue_rects": [],   # [(rect, "linggen"|"fabao"|"qixia")]
-    "center_rects": [],     # [(rect, "dialogue"|"achievement")] 栖霞
-    "partner_rects": [],    # [(rect, partner_id, "heal"|"dialogue"|"select")]
+    "growth_rects": [],  # [(rect, growth_type, cost)] 局外成长
+    "dialogue_rects": [],  # [(rect, "linggen"|"fabao"|"qixia")]
+    "center_rects": [],  # [(rect, "dialogue"|"achievement")] 栖霞
+    "partner_rects": [],  # [(rect, partner_id, "heal"|"dialogue"|"select")]
     "new_game_rect": None,
     "resonance_button_rect": None,  # 共鸣设置按钮
-    "resonance_panel_rects": [],    # [(rect, pact)] 共鸣选项
-    "resonance_confirm_rect": None, # 确认按钮
+    "resonance_panel_rects": [],  # [(rect, pact)] 共鸣选项
+    "resonance_confirm_rect": None,  # 确认按钮
     "resonance_cancel_rect": None,  # 取消按钮
 }
 
@@ -210,25 +215,55 @@ def draw_room(screen, rect, label, is_active, cam):
     screen.blit(txt, (r.x + 12, r.y + 8))
 
 
-def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choice, daoyun, unlocked_linggen, unlocked_fabao,
-                 village_player_rect, in_linggen_zone, in_fabao_zone, camera_offset=(0, 0),
-                 village_dialogue=None, potion_stock=0, potion_cap=1,
-                 in_partner_zone=None, partner_can_heal=None, partner_bond_levels=None,
-                 unlocked_accessories=None, selected_partner_id=None,
-                 accessory_slots=6, shop_refresh_count=1, base_health_bonus=0, base_mana_bonus=0,
-                 start_accessory_mode=0, in_center_zone=False, achievements_unlocked=None,
-                 resonance_panel_open=False, resonance_system=None):
+def draw_village(
+    screen,
+    avail_linggen,
+    avail_fabao,
+    linggen_choice,
+    fabao_choice,
+    daoyun,
+    unlocked_linggen,
+    unlocked_fabao,
+    village_player_rect,
+    in_linggen_zone,
+    in_fabao_zone,
+    camera_offset=(0, 0),
+    village_dialogue=None,
+    potion_stock=0,
+    potion_cap=1,
+    in_partner_zone=None,
+    partner_can_heal=None,
+    partner_bond_levels=None,
+    unlocked_accessories=None,
+    selected_partner_id=None,
+    accessory_slots=6,
+    shop_refresh_count=1,
+    base_health_bonus=0,
+    base_mana_bonus=0,
+    start_accessory_mode=0,
+    in_center_zone=False,
+    achievements_unlocked=None,
+    resonance_panel_open=False,
+    resonance_system=None,
+):
     """绘制村子：NPC 位置、传送门、玩家。village_dialogue 为 "linggen"|"fabao"|partner_id 时显示对话"""
     from attribute import ATTR_COLORS
-    from partner import get_bond_level
-    from village_visual import (
-        draw_village_background, draw_room_enhanced, draw_portal_enhanced,
-        draw_player_enhanced, draw_hud_enhanced, draw_selection_panel_enhanced,
-        draw_dialogue_enhanced
+    from config import (
+        COLOR_TEXT_HEADING,
+        get_font_small,
     )
-    from ui_theme import draw_button, THEME_COLORS
-    from config import get_font_title, get_font_heading, get_font_body, get_font_small, COLOR_TEXT_TITLE, COLOR_TEXT_HEADING
-    
+    from partner import get_bond_level
+    from ui_theme import draw_button
+    from village_visual import (
+        draw_dialogue_enhanced,
+        draw_hud_enhanced,
+        draw_player_enhanced,
+        draw_portal_enhanced,
+        draw_room_enhanced,
+        draw_selection_panel_enhanced,
+        draw_village_background,
+    )
+
     cam = camera_offset
     partner_bond_levels = partner_bond_levels or {}
     unlocked_accessories = unlocked_accessories or []
@@ -253,6 +288,7 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
         spr = _load_partner_sprite(pid)
         if spr and spr["frames"] and len(spr["frames"]) > 0:
             from tools.sprite_loader import play_animation
+
             idx = play_animation(spr["frames"], anim_t, fps=8, loop=True)
             frame = spr["frames"][idx]
             pivot = spr["pivots"][idx]
@@ -268,13 +304,14 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
                 draw_x = zone_scr.centerx - int(pivot[0] * scale)
                 draw_y = zone_scr.y + 28 + (zone_scr.h - 28) // 2 - int(pivot[1] * scale)
                 screen.blit(scaled, (draw_x, draw_y))
-    
+
     # 3 位 NPC（中央房间）
     for rect, label, npc_id in NPC_ROOMS:
         # NPC 立绘绘制
         spr = _load_npc_sprite(npc_id)
         if spr and spr["frames"] and len(spr["frames"]) > 0:
             from tools.sprite_loader import play_animation
+
             idx = play_animation(spr["frames"], anim_t, fps=8, loop=True)
             frame = spr["frames"][idx]
             pivot = spr["pivots"][idx]
@@ -294,8 +331,12 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
     # 传送门（使用增强版绘制）
     exit_scr = world_to_screen(EXIT_PORTAL, cam)
     demo_scr = world_to_screen(DEMO_PORTAL, cam)
-    exit_hover = exit_scr.collidepoint(pygame.mouse.get_pos()) or (village_player_rect and EXIT_PORTAL.colliderect(village_player_rect))
-    demo_hover = demo_scr.collidepoint(pygame.mouse.get_pos()) or (village_player_rect and DEMO_PORTAL.colliderect(village_player_rect))
+    exit_hover = exit_scr.collidepoint(pygame.mouse.get_pos()) or (
+        village_player_rect and EXIT_PORTAL.colliderect(village_player_rect)
+    )
+    demo_hover = demo_scr.collidepoint(pygame.mouse.get_pos()) or (
+        village_player_rect and DEMO_PORTAL.colliderect(village_player_rect)
+    )
     draw_portal_enhanced(screen, EXIT_PORTAL, "外出", PORTAL_COLOR, PORTAL_HOVER, exit_hover, cam)
     draw_portal_enhanced(screen, DEMO_PORTAL, "演示", PORTAL_DEMO, PORTAL_DEMO_HOVER, demo_hover, cam)
 
@@ -308,6 +349,7 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
 
     # 新游戏按钮
     from save import has_run_save
+
     VILLAGE_UI["new_game_rect"] = None
     if has_run_save():
         base_rect = pygame.Rect(20, SCREEN_HEIGHT - 50, 90, 35)
@@ -339,18 +381,18 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
         font_small = get_font_small()
         btn_txt = font_small.render("共鸣设置", True, COLOR_TEXT_HEADING)
         screen.blit(btn_txt, (btn_rect.x + 18, btn_rect.y + 6))
-    
+
     # 共鸣面板（全屏覆盖）
     if resonance_panel_open and resonance_system:
         _draw_resonance_panel(screen, resonance_system)
-    
+
     # 对话弹窗 / 成就面板（玩家点击后显示）
     achievements_unlocked = achievements_unlocked or set()
     if village_dialogue == "achievement":
         _draw_achievement_overlay(screen, achievements_unlocked)
     elif village_dialogue:
         # 检查是否有特殊对话文本
-        dialogue_text = getattr(game if 'game' in dir() else None, 'village_dialogue_text', None)
+        dialogue_text = getattr(game if "game" in dir() else None, "village_dialogue_text", None)
         draw_dialogue_enhanced(screen, village_dialogue, dialogue_text)
 
     # 伙伴区域：治疗/强化 / 对话按钮
@@ -365,6 +407,7 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
             can_heal = partner_can_heal.get(in_partner_zone, False)
             if can_heal:
                 from partner import get_upgrade_cost
+
                 lv = get_bond_level(in_partner_zone, partner_bond_levels)
                 cost = get_upgrade_cost(in_partner_zone, lv) if lv > 0 else 0
                 btn_label = f"强化{cost}" if lv > 0 else "治疗"
@@ -382,7 +425,11 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
                 is_sel = selected_partner_id == in_partner_zone
                 btn_sel = pygame.Rect(zone_scr.x + 5, btn_y, 90, 26)
                 VILLAGE_UI["partner_rects"].append((btn_sel, in_partner_zone, "select"))
-                c_sel = (120, 180, 140) if is_sel else ((80, 140, 100) if btn_sel.collidepoint(pygame.mouse.get_pos()) else (50, 100, 70))
+                c_sel = (
+                    (120, 180, 140)
+                    if is_sel
+                    else ((80, 140, 100) if btn_sel.collidepoint(pygame.mouse.get_pos()) else (50, 100, 70))
+                )
                 pygame.draw.rect(screen, c_sel, btn_sel)
                 pygame.draw.rect(screen, (120, 180, 140), btn_sel, 1)
                 lbl = "✓携带" if is_sel else "携带"
@@ -437,19 +484,24 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
     VILLAGE_UI["linggen_rects"] = []
     if in_linggen_zone and village_dialogue != "linggen":
         zone_scr = world_to_screen(LINGGEN_ZONE, cam)
-        draw_selection_panel_enhanced(screen, avail_linggen, linggen_choice, zone_scr, get_font(18), ATTR_COLORS, VILLAGE_UI["linggen_rects"])
+        draw_selection_panel_enhanced(
+            screen, avail_linggen, linggen_choice, zone_scr, get_font(18), ATTR_COLORS, VILLAGE_UI["linggen_rects"]
+        )
 
     # 法宝选择（在炼器坊内时）
     VILLAGE_UI["fabao_rects"] = []
     if in_fabao_zone and village_dialogue != "fabao":
         zone_scr = world_to_screen(FABAO_ZONE, cam)
-        draw_selection_panel_enhanced(screen, avail_fabao, fabao_choice, zone_scr, get_font(18), None, VILLAGE_UI["fabao_rects"])
+        draw_selection_panel_enhanced(
+            screen, avail_fabao, fabao_choice, zone_scr, get_font(18), None, VILLAGE_UI["fabao_rects"]
+        )
 
     # 解锁区域：灵根殿只显示灵根解锁，炼器坊只显示法宝解锁
     VILLAGE_UI["unlock_rects"] = []
     VILLAGE_UI["growth_rects"] = []
     if in_linggen_zone and not village_dialogue:
-        from unlock import get_lockable_linggen, get_linggen_cost
+        from unlock import get_linggen_cost, get_lockable_linggen
+
         lockable_lg = get_lockable_linggen(unlocked_linggen)
         zone_scr = world_to_screen(LINGGEN_ZONE, cam)
         unlock_y = zone_scr.bottom - 80
@@ -469,7 +521,8 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
                 screen.blit(txt, (rect.x + 5, rect.y + 6))
                 x += 110
     if in_fabao_zone and not village_dialogue:
-        from unlock import get_lockable_fabao, get_fabao_cost, get_lockable_accessories, get_accessory_unlock_cost
+        from unlock import get_accessory_unlock_cost, get_fabao_cost, get_lockable_accessories, get_lockable_fabao
+
         lockable_fb = get_lockable_fabao(unlocked_fabao, partner_bond_levels)
         lockable_acc = get_lockable_accessories(unlocked_accessories, partner_bond_levels)
         zone_scr = world_to_screen(FABAO_ZONE, cam)
@@ -492,6 +545,7 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
                 x += 110
         else:
             from fabao import FABAO_LIST
+
             if len(unlocked_fabao) < len(FABAO_LIST):
                 hint = font_small.render("需治疗对应伙伴才可解锁更多法宝", True, (140, 120, 80))
                 screen.blit(hint, (zone_scr.x, unlock_y - 24))
@@ -516,6 +570,7 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
         unlock_y -= 42 if lockable_acc else 0
         # 铸心：饰品槽位、商店刷新（道韵逐步递增）
         from unlock import get_growth_cost
+
         if accessory_slots < 9:
             cost = get_growth_cost("accessory_slot", accessory_slots)
             can = daoyun >= cost
@@ -524,7 +579,10 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
             c = (60, 80, 60) if can else (60, 50, 50)
             pygame.draw.rect(screen, c, rect)
             pygame.draw.rect(screen, (100, 100, 100), rect, 1)
-            screen.blit(font_small.render(f"饰品槽+1 {cost}", True, (200, 200, 200) if can else (120, 120, 120)), (rect.x + 5, rect.y + 6))
+            screen.blit(
+                font_small.render(f"饰品槽+1 {cost}", True, (200, 200, 200) if can else (120, 120, 120)),
+                (rect.x + 5, rect.y + 6),
+            )
         if shop_refresh_count < 3:
             cost = get_growth_cost("shop_refresh", shop_refresh_count)
             can = daoyun >= cost
@@ -533,7 +591,10 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
             c = (60, 80, 60) if can else (60, 50, 50)
             pygame.draw.rect(screen, c, rect)
             pygame.draw.rect(screen, (100, 100, 100), rect, 1)
-            screen.blit(font_small.render(f"刷新+1 {cost}", True, (200, 200, 200) if can else (120, 120, 120)), (rect.x + 5, rect.y + 6))
+            screen.blit(
+                font_small.render(f"刷新+1 {cost}", True, (200, 200, 200) if can else (120, 120, 120)),
+                (rect.x + 5, rect.y + 6),
+            )
         # 开局饰品：随机1个 / 二选一 / 三选一
         if start_accessory_mode < 3:
             cost = get_growth_cost("start_accessory", start_accessory_mode)
@@ -545,7 +606,10 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
             pygame.draw.rect(screen, (100, 100, 100), rect, 1)
             lbls = ("随机1饰品", "二选一", "三选一")
             lbl = lbls[start_accessory_mode] if start_accessory_mode < 3 else "三选一"
-            screen.blit(font_small.render(f"{lbl} {cost}", True, (200, 200, 200) if can else (120, 120, 120)), (rect.x + 5, rect.y + 6))
+            screen.blit(
+                font_small.render(f"{lbl} {cost}", True, (200, 200, 200) if can else (120, 120, 120)),
+                (rect.x + 5, rect.y + 6),
+            )
 
     # 碧落：生命/灵力上限（道韵购买）
     if in_partner_zone == "biluo" and not village_dialogue:
@@ -554,6 +618,7 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
             zone_scr = world_to_screen(p_rect, cam)
             gy = zone_scr.bottom - 50
             from unlock import get_growth_cost
+
             items = [("health", "生命+10", base_health_bonus), ("mana", "灵力+10", base_mana_bonus)]
             if potion_cap < 4:
                 items.append(("potion_cap", "丹药上限+1", potion_cap))
@@ -566,12 +631,16 @@ def draw_village(screen, avail_linggen, avail_fabao, linggen_choice, fabao_choic
                 c = (60, 80, 60) if can else (60, 50, 50)
                 pygame.draw.rect(screen, c, rect)
                 pygame.draw.rect(screen, (100, 100, 100), rect, 1)
-                screen.blit(font_small.render(f"{label} {cost}", True, (200, 200, 200) if can else (120, 120, 120)), (rect.x + 5, rect.y + 4))
+                screen.blit(
+                    font_small.render(f"{label} {cost}", True, (200, 200, 200) if can else (120, 120, 120)),
+                    (rect.x + 5, rect.y + 4),
+                )
 
 
 def _draw_achievement_overlay(screen, achievements_unlocked):
     """绘制成就面板"""
     from achievement import ACHIEVEMENT_LIST
+
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     overlay.set_alpha(200)
     overlay.fill((25, 30, 45))
@@ -604,6 +673,7 @@ def _draw_achievement_overlay(screen, achievements_unlocked):
 def _draw_dialogue_overlay(screen, npc_key):
     """绘制 NPC 对话弹窗"""
     from village_npc import NPC_DIALOGUES
+
     data = NPC_DIALOGUES.get(npc_key, {})
     name = data.get("name", "未知")
     lines = data.get("lines", [])
@@ -660,23 +730,23 @@ def _draw_selection_panel(screen, items, choice, zone_rect, font, attr_colors, o
 
 def _draw_resonance_panel(screen, resonance_system):
     """绘制秽源共鸣选择面板"""
-    from resonance_system import get_all_pacts, ResonanceType
-    
+    from resonance_system import ResonanceType, get_all_pacts
+
     # 半透明背景
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     overlay.set_alpha(220)
     overlay.fill((20, 25, 35))
     screen.blit(overlay, (0, 0))
-    
+
     font_title = get_font(32)
     font = get_font(22)
     font_small = get_font(18)
-    
+
     # 标题
     title = font_title.render("感知秽源侵蚀", True, (220, 200, 150))
     t_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 40))
     screen.blit(title, t_rect)
-    
+
     # 当前共鸣强度和道韵加成
     intensity = resonance_system.get_total_intensity()
     daoyun_mult = resonance_system.get_daoyun_multiplier()
@@ -684,7 +754,7 @@ def _draw_resonance_panel(screen, resonance_system):
     info = font.render(info_text, True, (180, 200, 180))
     i_rect = info.get_rect(center=(SCREEN_WIDTH // 2, 85))
     screen.blit(info, i_rect)
-    
+
     # 6 大类侵蚀，每类 3 个选项
     all_pacts = get_all_pacts()
     types = [
@@ -695,52 +765,62 @@ def _draw_resonance_panel(screen, resonance_system):
         (ResonanceType.CHAOS, "混沌侵蚀", (255, 180, 100)),
         (ResonanceType.BARREN, "贫瘠侵蚀", (140, 120, 100)),
     ]
-    
+
     VILLAGE_UI["resonance_panel_rects"] = []
-    
+
     y = 130
     for res_type, type_name, type_color in types:
         # 类型标题
         type_title = font.render(type_name, True, type_color)
         screen.blit(type_title, (80, y))
-        
+
         # 3 个等级选项
         pacts = [p for p in all_pacts if p.type == res_type]
         x = 250
         for pact in pacts:
             # 检查是否已选择
             is_selected = pact in resonance_system.active_pacts
-            
+
             # 绘制复选框
             checkbox_rect = pygame.Rect(x, y, 280, 32)
             VILLAGE_UI["resonance_panel_rects"].append((checkbox_rect, pact))
-            
+
             is_hover = checkbox_rect.collidepoint(pygame.mouse.get_pos())
             bg_color = (80, 100, 120) if is_selected else ((60, 75, 90) if is_hover else (45, 55, 70))
             pygame.draw.rect(screen, bg_color, checkbox_rect)
             pygame.draw.rect(screen, (140, 160, 180) if is_selected else (100, 120, 140), checkbox_rect, 2)
-            
+
             # 复选框标记
             check_box = pygame.Rect(x + 5, y + 8, 16, 16)
             pygame.draw.rect(screen, (200, 200, 200), check_box, 1)
             if is_selected:
-                pygame.draw.line(screen, (100, 255, 100), (check_box.x + 3, check_box.centery), 
-                               (check_box.centerx, check_box.bottom - 3), 2)
-                pygame.draw.line(screen, (100, 255, 100), (check_box.centerx, check_box.bottom - 3),
-                               (check_box.right - 3, check_box.y + 3), 2)
-            
+                pygame.draw.line(
+                    screen,
+                    (100, 255, 100),
+                    (check_box.x + 3, check_box.centery),
+                    (check_box.centerx, check_box.bottom - 3),
+                    2,
+                )
+                pygame.draw.line(
+                    screen,
+                    (100, 255, 100),
+                    (check_box.centerx, check_box.bottom - 3),
+                    (check_box.right - 3, check_box.y + 3),
+                    2,
+                )
+
             # 文本
             pact_text = font_small.render(f"{pact.name} (+{pact.intensity})", True, (220, 220, 220))
             screen.blit(pact_text, (x + 28, y + 2))
-            
+
             # 描述
             desc_text = font_small.render(pact.desc, True, (160, 160, 160))
             screen.blit(desc_text, (x + 28, y + 18))
-            
+
             x += 300
-        
+
         y += 50
-    
+
     # 专属掉落提示
     if intensity > 0:
         drops = resonance_system.get_unique_drops()
@@ -752,15 +832,15 @@ def _draw_resonance_panel(screen, resonance_system):
                 drop_text += f" 等 {len(drops)} 种"
             drop_info = font_small.render(drop_text, True, (180, 160, 100))
             screen.blit(drop_info, (200, y + 12))
-    
+
     # 确认和取消按钮
     btn_y = SCREEN_HEIGHT - 80
     confirm_rect = pygame.Rect(SCREEN_WIDTH // 2 - 120, btn_y, 100, 40)
     cancel_rect = pygame.Rect(SCREEN_WIDTH // 2 + 20, btn_y, 100, 40)
-    
+
     VILLAGE_UI["resonance_confirm_rect"] = confirm_rect
     VILLAGE_UI["resonance_cancel_rect"] = cancel_rect
-    
+
     # 确认按钮
     is_confirm_hover = confirm_rect.collidepoint(pygame.mouse.get_pos())
     confirm_color = (80, 140, 100) if is_confirm_hover else (60, 100, 70)
@@ -769,7 +849,7 @@ def _draw_resonance_panel(screen, resonance_system):
     confirm_text = font.render("确认", True, (255, 255, 255))
     c_rect = confirm_text.get_rect(center=confirm_rect.center)
     screen.blit(confirm_text, c_rect)
-    
+
     # 取消按钮
     is_cancel_hover = cancel_rect.collidepoint(pygame.mouse.get_pos())
     cancel_color = (140, 80, 80) if is_cancel_hover else (100, 60, 60)
@@ -778,7 +858,7 @@ def _draw_resonance_panel(screen, resonance_system):
     cancel_text = font.render("取消", True, (255, 255, 255))
     ca_rect = cancel_text.get_rect(center=cancel_rect.center)
     screen.blit(cancel_text, ca_rect)
-    
+
     # 提示
     hint = font_small.render("同类型只能选择一个等级", True, (140, 140, 140))
     h_rect = hint.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))

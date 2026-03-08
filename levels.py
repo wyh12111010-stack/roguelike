@@ -1,25 +1,68 @@
 """关卡配置 - 从 data/levels.json、data/demo.json 加载"""
-from config import ARENA_X, ARENA_Y, ARENA_W, ARENA_H
 
+from config import ARENA_H, ARENA_W, ARENA_X, ARENA_Y
 from data import load_json
 
 # 内置默认（配置缺失时回退）3大关×5小关：只有大关有名字，小关按类型显示
 _DEFAULT_ROUTE_TREE = {
     0: [1, 2, 3, 4, 5],
-    1: [6, 7, 8, 9, 10], 2: [6, 7, 8, 9, 10], 3: [6, 7, 8, 9, 10], 4: [6, 7, 8, 9, 10], 5: [6, 7, 8, 9, 10],
-    6: [11, 12, 13, 14, 15], 7: [11, 12, 13, 14, 15], 8: [11, 12, 13, 14, 15], 9: [11, 12, 13, 14, 15], 10: [11, 12, 13, 14, 15],
-    11: ["boss_1", "boss_2", "boss_3"], 12: ["boss_1", "boss_2", "boss_3"], 13: ["boss_1", "boss_2", "boss_3"], 14: ["boss_1", "boss_2", "boss_3"], 15: ["boss_1", "boss_2", "boss_3"],
-    "shop": [6, 7, 8, 9, 10], "rest": [6, 7, 8, 9, 10], "treasure": [6, 7, 8, 9, 10],
-    "boss_1": [], "boss_2": [], "boss_3": [],
+    1: [6, 7, 8, 9, 10],
+    2: [6, 7, 8, 9, 10],
+    3: [6, 7, 8, 9, 10],
+    4: [6, 7, 8, 9, 10],
+    5: [6, 7, 8, 9, 10],
+    6: [11, 12, 13, 14, 15],
+    7: [11, 12, 13, 14, 15],
+    8: [11, 12, 13, 14, 15],
+    9: [11, 12, 13, 14, 15],
+    10: [11, 12, 13, 14, 15],
+    11: ["boss_1", "boss_2", "boss_3"],
+    12: ["boss_1", "boss_2", "boss_3"],
+    13: ["boss_1", "boss_2", "boss_3"],
+    14: ["boss_1", "boss_2", "boss_3"],
+    15: ["boss_1", "boss_2", "boss_3"],
+    "shop": [6, 7, 8, 9, 10],
+    "rest": [6, 7, 8, 9, 10],
+    "treasure": [6, 7, 8, 9, 10],
+    "boss_1": [],
+    "boss_2": [],
+    "boss_3": [],
 }
 _DEFAULT_NODE_TYPES = {
-    "1": "combat", "2": "combat", "3": "shop", "4": "rest", "5": "treasure",
-    "6": "combat", "7": "combat", "8": "shop", "9": "rest", "10": "treasure",
-    "11": "combat", "12": "combat", "13": "shop", "14": "rest", "15": "treasure",
+    "1": "combat",
+    "2": "combat",
+    "3": "shop",
+    "4": "rest",
+    "5": "treasure",
+    "6": "combat",
+    "7": "combat",
+    "8": "shop",
+    "9": "rest",
+    "10": "treasure",
+    "11": "combat",
+    "12": "combat",
+    "13": "shop",
+    "14": "rest",
+    "15": "treasure",
 }
 _DEFAULT_MAJOR_NAMES = ["试炼", "秘境", "凶地"]
-_DEFAULT_TYPE_NAMES = {"combat": "战斗", "shop": "坊市", "rest": "休息", "treasure": "宝箱", "elite": "精英", "boss": "Boss", "event": "奇遇"}
-_DEFAULT_REWARD_HINTS = {"combat": "灵石", "shop": "法宝/饰品", "rest": "回复", "treasure": "随机", "elite": "饰品", "boss": "丹药"}
+_DEFAULT_TYPE_NAMES = {
+    "combat": "战斗",
+    "shop": "坊市",
+    "rest": "休息",
+    "treasure": "宝箱",
+    "elite": "精英",
+    "boss": "Boss",
+    "event": "奇遇",
+}
+_DEFAULT_REWARD_HINTS = {
+    "combat": "灵石",
+    "shop": "法宝/饰品",
+    "rest": "回复",
+    "treasure": "随机",
+    "elite": "饰品",
+    "boss": "丹药",
+}
 _DEFAULT_ENTRANCE_NAMES = {"boss_1": "Boss 妖王", "boss_2": "Boss 剑魔", "boss_3": "Boss 丹魔"}
 _DEFAULT_DEMO = {
     "types": ["melee", "ranged", "charge", "aoe", "homing", "summon"],
@@ -119,7 +162,20 @@ DEMO_ROUTE_TREE = None
 
 def _ensure_loaded():
     """首次访问时加载配置"""
-    global ROUTE_TREE, ENTRANCE_NAMES, NODE_TYPES, MAJOR_NAMES, TYPE_NAMES, MAJOR_OF, REWARD_HINTS, NODE_REWARDS, LEVELS, BOSSES, DEMO_TYPES, DEMO_NAMES, DEMO_ROUTE_TREE
+    global \
+        ROUTE_TREE, \
+        ENTRANCE_NAMES, \
+        NODE_TYPES, \
+        MAJOR_NAMES, \
+        TYPE_NAMES, \
+        MAJOR_OF, \
+        REWARD_HINTS, \
+        NODE_REWARDS, \
+        LEVELS, \
+        BOSSES, \
+        DEMO_TYPES, \
+        DEMO_NAMES, \
+        DEMO_ROUTE_TREE
     if ROUTE_TREE is None:
         cfg = _get_levels_cfg()
         ROUTE_TREE = _parse_route_tree(cfg.get("route_tree", _DEFAULT_ROUTE_TREE)) or _DEFAULT_ROUTE_TREE

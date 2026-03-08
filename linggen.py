@@ -1,13 +1,16 @@
 """
 灵根 - 来源于自身，决定附带属性（五行）
 """
+
 from dataclasses import dataclass
+
 from attribute import Attr
 
 
 @dataclass
 class Linggen:
     """灵根"""
+
     id: str
     name: str
     attr: Attr  # 附带属性

@@ -26,7 +26,7 @@
         # 伤害飘字系统
         from damage_text import init_damage_text_manager
         self.damage_text_mgr = init_damage_text_manager()
-        
+
         # 屏幕震动系统
         from screen_shake import init_screen_shake
         self.screen_shake = init_screen_shake()
@@ -37,7 +37,7 @@
         # from damage_text import init_damage_text_manager
         # self.damage_text_mgr = init_damage_text_manager()
         self.damage_text_mgr = None
-        
+
         # 屏幕震动系统（暂时禁用）
         # from screen_shake import init_screen_shake
         # self.screen_shake = init_screen_shake()

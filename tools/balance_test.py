@@ -3,9 +3,10 @@
 用法: python -m tools.balance_test [--runs N] [--level 0]
 可修改下方 OVERRIDES 覆盖配置后重跑，对比输出
 """
-import sys
-import random
+
 import argparse
+import random
+import sys
 from pathlib import Path
 
 # 确保项目根目录在 path 中
@@ -29,7 +30,7 @@ class MockRect:
         self.centery = y + h // 2
 
     def inflate(self, dx, dy):
-        return MockRect(self.x - dx//2, self.y - dy//2, self.w + dx, self.h + dy)
+        return MockRect(self.x - dx // 2, self.y - dy // 2, self.w + dx, self.h + dy)
 
 
 class MockEnemy:
@@ -42,6 +43,7 @@ class MockEnemy:
         self.dead = False
         self.enemy_type = "melee"
         from attribute import attr_from_str
+
         self.attr = attr_from_str(attr) if isinstance(attr, str) else attr
         self._dot_list = []
         self._superconduct_slow = 0
@@ -51,13 +53,16 @@ class MockEnemy:
 
     def take_damage(self, amount, attacker_attr=None, enemies=None):
         self.health -= amount
-        from attribute import get_reaction_for_hit, Attr
+        from attribute import Attr, get_reaction_for_hit
+
         reaction = get_reaction_for_hit(attacker_attr or Attr.NONE, self.attr) if attacker_attr else None
         if reaction:
             from reaction_effects import emit_reaction
+
             emit_reaction(reaction, amount, self, (self.rect.centerx, self.rect.centery), attacker_type="player")
         elif attacker_attr and attacker_attr != Attr.NONE:
             from attribute_effects import apply_base_attr_effect
+
             apply_base_attr_effect(attacker_attr, amount, self, (self.rect.centerx, self.rect.centery), enemies or [])
         if self.health <= 0:
             self.dead = True
@@ -68,7 +73,8 @@ def run_simulation(player_damage=25, player_attr=None, enemies_config=None, max_
     模拟战斗：玩家持续输出，敌人不移动不攻击（仅测玩家输出侧）
     返回: {time, kills, total_damage_dealt, reactions_triggered}
     """
-    from attribute import attr_from_str, Attr
+    from attribute import Attr
+
     player_attr = player_attr or Attr.FIRE
     enemies_config = enemies_config or [
         {"x": 100, "y": 100, "health": 25, "damage": 10, "attr": "wood"},
@@ -106,12 +112,10 @@ def run_simulation(player_damage=25, player_attr=None, enemies_config=None, max_
             alive = [e for e in enemies if not e.dead]
             if not alive:
                 break
-            target = min(alive, key=lambda e: (e.rect.centerx - 50)**2 + (e.rect.centery - 50)**2)
+            target = min(alive, key=lambda e: (e.rect.centerx - 50) ** 2 + (e.rect.centery - 50) ** 2)
             dmg = player_damage
             total_damage += dmg
-            had_reaction = bool(
-                __import__("attribute").get_reaction_for_hit(player_attr, target.attr)
-            )
+            had_reaction = bool(__import__("attribute").get_reaction_for_hit(player_attr, target.attr))
             target.take_damage(dmg, player_attr, enemies)
             if had_reaction:
                 reactions += 1
@@ -150,7 +154,7 @@ def run_player_survival_test(enemies_config=None, max_time=30.0, dt=0.016):
     模拟玩家生存：敌人持续攻击，玩家不还手
     返回: {survival_time, damage_taken, deaths}
     """
-    from attribute import attr_from_str, Attr
+    from attribute import Attr, attr_from_str
 
     enemies_config = enemies_config or [
         {"damage": 12, "attr": "fire", "attack_interval": 0.8},
@@ -176,12 +180,15 @@ def run_player_survival_test(enemies_config=None, max_time=30.0, dt=0.016):
                 amount = int(amount * (1 + getattr(self, "_weaken_pct", 15) / 100))
             self.health = max(0, self.health - amount)
             from attribute import get_reaction_for_hit
+
             reaction = get_reaction_for_hit(attacker_attr or Attr.NONE, self.linggen.attr) if attacker_attr else None
             if reaction:
                 from reaction_effects import emit_reaction
+
                 emit_reaction(reaction, amount, self, (self.rect.centerx, self.rect.centery), attacker_type="enemy")
             elif attacker_attr and attacker_attr != Attr.NONE:
                 from attribute_effects import apply_base_attr_effect_enemy_vs_player
+
                 apply_base_attr_effect_enemy_vs_player(attacker_attr, amount, self)
 
     from reaction_effects import ReactionEffectHandler
@@ -190,16 +197,19 @@ def run_player_survival_test(enemies_config=None, max_time=30.0, dt=0.016):
 
     def get_context():
         return {"enemies": [], "player": player}
-    handler = ReactionEffectHandler(get_context)
+
+    ReactionEffectHandler(get_context)
 
     attackers = []
     for c in enemies_config:
-        attackers.append({
-            "damage": c["damage"],
-            "attr": attr_from_str(c.get("attr", "none")),
-            "interval": c.get("attack_interval", 1.0),
-            "timer": 0,
-        })
+        attackers.append(
+            {
+                "damage": c["damage"],
+                "attr": attr_from_str(c.get("attr", "none")),
+                "interval": c.get("attack_interval", 1.0),
+                "timer": 0,
+            }
+        )
 
     damage_taken = 0
     t = 0
@@ -241,6 +251,7 @@ def load_level_enemies(level_idx=0):
     """从 levels.json 加载关卡敌人配置"""
     try:
         from data import load_json
+
         data = load_json("levels.json", {})  # data 模块从 data/ 目录加载
         levels = data.get("levels", [])
         if 0 <= level_idx < len(levels):
@@ -265,11 +276,13 @@ def build_survival_attackers_from_level(level_data):
     attackers = []
     for e in level_data:
         etype = e.get("type", "melee")
-        attackers.append({
-            "damage": int(e.get("damage", 10)),
-            "attr": e.get("attr", "none"),
-            "attack_interval": interval_by_type.get(etype, 1.0),
-        })
+        attackers.append(
+            {
+                "damage": int(e.get("damage", 10)),
+                "attr": e.get("attr", "none"),
+                "attack_interval": interval_by_type.get(etype, 1.0),
+            }
+        )
     return attackers or None
 
 
@@ -303,7 +316,13 @@ def main():
     enemies_cfg = None
     if level_data:
         enemies_cfg = [
-            {"x": p["pos"][0], "y": p["pos"][1], "health": p.get("health", 25), "damage": p.get("damage", 10), "attr": p.get("attr", "none")}
+            {
+                "x": p["pos"][0],
+                "y": p["pos"][1],
+                "health": p.get("health", 25),
+                "damage": p.get("damage", 10),
+                "attr": p.get("attr", "none"),
+            }
             for p in level_data
         ]
 

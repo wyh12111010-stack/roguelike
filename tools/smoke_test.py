@@ -3,28 +3,25 @@
 用法: python -m tools.smoke_test
 不启动 GUI，仅验证模块加载与关键逻辑。
 """
+
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+
 def test_imports():
     """1. 核心模块导入"""
     import pygame
+
     pygame.init()
-    from game import Game
-    from levels import get_level_enemies, get_node_type, ROUTE_TREE, _ensure_loaded, NODE_TYPES
-    from event_events import pick_random_event, apply_event_effect
-    from achievement import unlock_achievement
-    from enemy import create_enemy
-    from player import Player
-    from meta import meta
-    from save import persist_meta
     print("  [OK] 核心模块导入")
+
 
 def test_levels():
     """2. 关卡配置"""
-    from levels import get_level_enemies, get_node_type, _ensure_loaded
+    from levels import _ensure_loaded, get_level_enemies, get_node_type
+
     _ensure_loaded()
     for i in [0, 5, 10]:
         enemies = get_level_enemies(i)
@@ -32,16 +29,20 @@ def test_levels():
         assert len(enemies) > 0 or nt != "combat", f"level {i} has no enemies"
     print("  [OK] 关卡配置 (0,5,10)")
 
+
 def test_event():
     """3. 事件节点"""
-    from event_events import pick_random_event, apply_event_effect
-    ev_id, text, options = pick_random_event(0)
+    from event_events import pick_random_event
+
+    _ev_id, text, options = pick_random_event(0)
     assert text and len(options) > 0
     print("  [OK] 事件池 pick_random_event")
+
 
 def test_create_enemy():
     """4. 敌人生成"""
     from enemy import create_enemy
+
     e1 = create_enemy("melee", 100, 100, behavior="chase")
     e2 = create_enemy("melee", 100, 100, behavior="hitrun")
     e2b = create_enemy("ranged", 100, 100, behavior="burst")
@@ -73,8 +74,10 @@ def test_create_enemy():
 def test_reaction_effect_stack_rules():
     """5. 反应效果叠加规则：同来源 DOT 刷新，不无限叠加"""
     from reaction_effects import _apply_dot, _apply_weaken
+
     class Dummy:
         pass
+
     t = Dummy()
     t._dot_list = []
     _apply_dot(t, 2, 3, 0.4, source="fire")
@@ -90,8 +93,10 @@ def test_reaction_effect_stack_rules():
 
 def test_damage_ordering():
     """6. 伤害顺序：死亡后不应继续触发复杂效果"""
-    from player import Player
     import pygame
+
+    from player import Player
+
     pygame.init()
     p = Player(100, 100)
     p.health = 1
@@ -105,14 +110,17 @@ def test_damage_ordering():
 
 def test_boss_mechanics_limits():
     """7. Boss 机制上限：召唤/再生限次 + 丹魔阶段强化"""
-    from enemy import create_enemy
     import pygame
+
+    from enemy import create_enemy
+
     pygame.init()
 
     class DummyPlayer:
         def __init__(self):
             self.rect = pygame.Rect(200, 200, 32, 32)
             self.hp_taken = 0
+
         def take_damage(self, dmg, attr=None):
             self.hp_taken += max(0, int(dmg))
 
@@ -150,28 +158,34 @@ def test_boss_mechanics_limits():
 def test_boss_sanity_check():
     """8. Boss 参数合法性检查"""
     from tools.boss_sanity_check import run
+
     run()
     print("  [OK] boss sanity check")
 
 
 def test_boss_practice_entry():
     """9. Boss 试玩入口基础校验"""
-    from tools.boss_practice import VALID_BOSSES
     from levels import get_boss_enemies
+    from tools.boss_practice import VALID_BOSSES
+
     assert "final_boss" in VALID_BOSSES
     for bid in VALID_BOSSES:
         assert len(get_boss_enemies(bid)) > 0, f"missing boss config for {bid}"
     print("  [OK] boss practice entry")
 
+
 def test_game_init():
     """5. Game 初始化（需 display）"""
     import pygame
+
     pygame.init()
     pygame.display.set_mode((800, 600), pygame.HIDDEN)
     from game import Game
+
     g = Game(pygame.display.get_surface())
     assert g.scene == "village"
     print("  [OK] Game 初始化")
+
 
 def main():
     print("=== 阶段 1 冒烟测试 ===\n")
@@ -199,6 +213,7 @@ def main():
         print("失败:", errors)
         sys.exit(1)
     print("全部通过")
+
 
 if __name__ == "__main__":
     main()

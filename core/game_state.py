@@ -1,8 +1,9 @@
 """
 游戏状态 - 集中管理全局状态，单例
 """
+
 from dataclasses import dataclass, field
-from typing import Optional, List, Any
+from typing import Optional
 
 # 延迟导入避免循环
 _instance: Optional["GameState"] = None
@@ -11,10 +12,11 @@ _instance: Optional["GameState"] = None
 @dataclass
 class RunData:
     """本局运行数据"""
+
     kill_count: int = 0
     current_node_index: int = 0
     lingshi: int = 0
-    route_history: List[int] = field(default_factory=list)
+    route_history: list[int] = field(default_factory=list)
     # 可扩展：饰品列表、伙伴、buff 等
 
 

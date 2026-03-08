@@ -1,14 +1,14 @@
 """法宝独有法术效果 - 21 个法宝的独特法术"""
+
 import math
-import random
 
 from attribute import get_self_reaction
-from projectile import FlameBeam, SlowZone, EarthWall, Projectile
-
+from projectile import EarthWall, FlameBeam, Projectile, SlowZone
 
 # ============================================================
 # 基础法宝法术（7 个）
 # ============================================================
+
 
 def cast_flame_wave(player, ctx):
     """赤炎剑/流光鞭/雷霆炮/雷鸣鼓：烈焰冲击 - 直线粗火焰波"""
@@ -16,7 +16,9 @@ def cast_flame_wave(player, ctx):
     cy = player.rect.centery
     dmg = player._calc_damage(35)
     sr = get_self_reaction(player)
-    beam = FlameBeam(cx, cy, player.facing, length=180, width=45, duration=0.4, damage=dmg, attr=player.fabao.attr, self_reaction=sr)
+    beam = FlameBeam(
+        cx, cy, player.facing, length=180, width=45, duration=0.4, damage=dmg, attr=player.fabao.attr, self_reaction=sr
+    )
     ctx["projectiles"].append(beam)
 
 
@@ -65,16 +67,18 @@ def cast_needle_rain(player, ctx):
     """离火针：针雨 - 范围内持续降下火针"""
     cx = player.rect.centerx + math.cos(player.facing) * 100
     cy = player.rect.centery + math.sin(player.facing) * 100
-    
+
     from projectile import NeedleRainZone
+
     zone = NeedleRainZone(
-        cx, cy,
+        cx,
+        cy,
         radius=95,
         duration=2.5,
         tick_interval=0.15,
         damage_per_tick=player._calc_damage(8),
         attr=player.fabao.attr,
-        self_reaction=get_self_reaction(player)
+        self_reaction=get_self_reaction(player),
     )
     ctx["spell_zones"].append(zone)
 
@@ -83,17 +87,19 @@ def cast_gravity_field(player, ctx):
     """玄坤鼎/混元珠：重力场 - 拉扯敌人 + 持续伤害"""
     cx = player.rect.centerx + math.cos(player.facing) * 100
     cy = player.rect.centery + math.sin(player.facing) * 100
-    
+
     from projectile import GravityFieldZone
+
     zone = GravityFieldZone(
-        cx, cy,
+        cx,
+        cy,
         radius=110,
         duration=3.0,
         pull_strength=150,
         tick_interval=0.3,
         damage_per_tick=player._calc_damage(12),
         attr=player.fabao.attr,
-        self_reaction=get_self_reaction(player)
+        self_reaction=get_self_reaction(player),
     )
     ctx["spell_zones"].append(zone)
 

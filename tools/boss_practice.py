@@ -6,18 +6,19 @@ Boss 难度试玩入口（仅加载 Boss 关）
   python -m tools.boss_practice segment_boss_3
   python -m tools.boss_practice final_boss
 """
+
 import sys
+
 import pygame
 
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, COLOR_BG
+from config import COLOR_BG, FPS, SCREEN_HEIGHT, SCREEN_WIDTH
+from core import GameState
+from fabao import FABAO_LIST
 from game import Game
 from levels import get_boss_enemies
-from save import init_meta
-from meta import meta
-from core import GameState
 from linggen import LINGGEN_LIST
-from fabao import FABAO_LIST
-
+from meta import meta
+from save import init_meta
 
 VALID_BOSSES = ("segment_boss_1", "segment_boss_2", "segment_boss_3", "final_boss")
 
@@ -77,4 +78,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

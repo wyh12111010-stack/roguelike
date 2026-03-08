@@ -1,7 +1,9 @@
 """
 伙伴充能技能 - 击杀充能，R 键释放
 """
+
 import math
+
 import pygame
 
 
@@ -45,16 +47,17 @@ def _skill_leiji(player, ctx):
     for e in enemies:
         dx = e.rect.centerx - cx
         dy = e.rect.centery - cy
-        if dx*dx + dy*dy <= radius * radius:
+        if dx * dx + dy * dy <= radius * radius:
             e.take_damage(dmg, None, enemies=enemies)
     from particles import spawn_particles
+
     spawn_particles(cx, cy, "metal")
 
 
 def _skill_huanbu(player, ctx):
     """幻步：持续机动型。移速+45%~55%、开场无敌 0.5s（主角已有冲刺，幻步侧重持续跑位）"""
     blv = getattr(player, "partner_bond_level", 1)
-    player._partner_huanbu_until = 4.0 + blv * 0.5   # Lv1:4.5s, Lv2:5s, Lv3:5.5s
+    player._partner_huanbu_until = 4.0 + blv * 0.5  # Lv1:4.5s, Lv2:5s, Lv3:5.5s
     player._partner_huanbu_speed = 1.45 + (blv - 1) * 0.05  # Lv1:+45%, Lv2:+50%, Lv3:+55%
     player.invincible_timer = 0.5
 
@@ -64,14 +67,16 @@ def _skill_jianqi(player, ctx):
     blv = getattr(player, "partner_bond_level", 1)
     mult = 1.4 + blv * 0.15  # Lv1:155%, Lv2:170%, Lv3:185%
     from projectile import Projectile
+
     cx, cy = player.rect.centerx, player.rect.centery
     src = player.fabao or player._gongfa
-    base = getattr(src, 'damage', 20) if src else 20
+    base = getattr(src, "damage", 20) if src else 20
     dmg = int(player._calc_damage(base, is_melee=True) * mult)
     dx = math.cos(player.facing) * 400
     dy = math.sin(player.facing) * 400
-    attr = src.attr if src and hasattr(src, 'attr') else None
+    attr = src.attr if src and hasattr(src, "attr") else None
     from attribute import get_self_reaction
+
     sr = get_self_reaction(player)
     proj = Projectile(cx, cy, dx, dy, dmg, 0.8, pierce=True, attr=attr, self_reaction=sr)
     ctx.get("projectiles", []).append(proj)
@@ -88,25 +93,27 @@ def _skill_huichun(player, ctx):
 def _skill_yingdun(player, ctx):
     """影遁：长距离瞬移 + 较长无敌 + 落地处 AOE 伤害"""
     blv = getattr(player, "partner_bond_level", 1)
-    dist = 140 + blv * 35   # Lv1:175, Lv2:210, Lv3:245
+    dist = 140 + blv * 35  # Lv1:175, Lv2:210, Lv3:245
     player.rect.x += int(math.cos(player.facing) * dist)
     player.rect.y += int(math.sin(player.facing) * dist)
-    from config import ARENA_X, ARENA_Y, ARENA_W, ARENA_H
+    from config import ARENA_H, ARENA_W, ARENA_X, ARENA_Y
+
     arena = pygame.Rect(ARENA_X, ARENA_Y, ARENA_W, ARENA_H)
     player.rect.clamp_ip(arena)
     player.invincible_timer = 0.7 + blv * 0.15  # Lv1:0.85s, Lv2:1s, Lv3:1.15s
     # 落地处 AOE 伤害敌人
     cx, cy = player.rect.centerx, player.rect.centery
-    radius = 60 + blv * 15   # Lv1:75, Lv2:90, Lv3:105
+    radius = 60 + blv * 15  # Lv1:75, Lv2:90, Lv3:105
     base_dmg = 25 + blv * 8
     dmg = player._calc_damage(base_dmg, is_melee=False)
     enemies = ctx.get("enemies", [])
     for e in enemies:
         dx = e.rect.centerx - cx
         dy = e.rect.centery - cy
-        if dx*dx + dy*dy <= radius * radius:
+        if dx * dx + dy * dy <= radius * radius:
             e.take_damage(dmg, None, enemies=enemies)
     from particles import spawn_particles
+
     spawn_particles(cx, cy, "metal")
 
 

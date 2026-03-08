@@ -72,11 +72,11 @@ play_sfx("attack")
 
 def take_damage(self, damage, is_crit=False):
     self.health -= damage
-    
+
     # 显示伤害飘字
     from damage_text import show_damage
     show_damage(self.x, self.y, damage, is_crit=is_crit)
-    
+
     return self.health <= 0  # 返回是否死亡
 """
 
@@ -213,15 +213,15 @@ if self.tutorial.active:
     # 检测移动
     if keys[pygame.K_w] or keys[pygame.K_a] or keys[pygame.K_s] or keys[pygame.K_d]:
         self.tutorial.check_action("move")
-    
+
     # 检测攻击
     if pygame.mouse.get_pressed()[0]:
         self.tutorial.check_action("attack")
-    
+
     # 检测技能
     if keys[pygame.K_e]:
         self.tutorial.check_action("skill")
-    
+
     # 检测闪避
     if keys[pygame.K_SPACE] or keys[pygame.K_LSHIFT]:
         self.tutorial.check_action("dash")

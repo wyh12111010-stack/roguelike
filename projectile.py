@@ -1,14 +1,17 @@
 """投射物 / 攻击判定，支持元素属性
 对标 Tiny Rogues：爽点在弹道、射速、范围
 """
+
 import math
+
 import pygame
 
-from config import COLOR_PROJECTILE, ARENA_X, ARENA_Y, ARENA_W, ARENA_H
+from config import ARENA_H, ARENA_Y, COLOR_PROJECTILE
 
 
 class Projectile:
     """远程弹道"""
+
     def __init__(self, x, y, vx, vy, damage, lifetime=0.5, pierce=False, attr=None, self_reaction=None):
         self.x = x
         self.y = y
@@ -23,27 +26,29 @@ class Projectile:
         self.dead = False
         self.radius = 8
         self._hit_ids = set()
-    
+
     def update(self, dt):
         self.x += self.vx * dt
         self.y += self.vy * dt
         self.age += dt
         if self.age >= self.lifetime:
             self.dead = True
-    
+
     def check_hit(self, enemies):
         for e in enemies:
             if e.dead or id(e) in self._hit_ids:
                 continue
             dx = e.rect.centerx - self.x
             dy = e.rect.centery - self.y
-            if dx*dx + dy*dy < (self.radius + 15) ** 2:
-                e.take_damage(self.damage, self.attr, enemies=enemies, self_reaction=getattr(self, "self_reaction", None))
+            if dx * dx + dy * dy < (self.radius + 15) ** 2:
+                e.take_damage(
+                    self.damage, self.attr, enemies=enemies, self_reaction=getattr(self, "self_reaction", None)
+                )
                 self._hit_ids.add(id(e))
                 if not self.pierce:
                     self.dead = True
                     break
-    
+
     def draw(self, screen):
         if self.dead:
             return
@@ -52,6 +57,7 @@ class Projectile:
 
 class MeleeSlash:
     """近战挥砍判定，支持弧线宽度 arc_half（弧度）"""
+
     def __init__(self, x, y, angle, length, duration, damage, attr=None, arc_half=1.0, self_reaction=None):
         self.x = x
         self.y = y
@@ -65,12 +71,12 @@ class MeleeSlash:
         self.age = 0
         self.dead = False
         self.hit_enemies = set()
-    
+
     def update(self, dt):
         self.age += dt
         if self.age >= self.duration:
             self.dead = True
-    
+
     def check_hit(self, enemies):
         if self.dead:
             return
@@ -79,19 +85,21 @@ class MeleeSlash:
                 continue
             dx = e.rect.centerx - self.x
             dy = e.rect.centery - self.y
-            dist = math.sqrt(dx*dx + dy*dy)
+            dist = math.sqrt(dx * dx + dy * dy)
             if dist > self.length:
                 continue
             angle_to = math.atan2(dy, dx)
             diff = abs((angle_to - self.angle + math.pi) % (2 * math.pi) - math.pi)
             if diff < self.arc_half:
-                e.take_damage(self.damage, self.attr, enemies=enemies, self_reaction=getattr(self, "self_reaction", None))
+                e.take_damage(
+                    self.damage, self.attr, enemies=enemies, self_reaction=getattr(self, "self_reaction", None)
+                )
                 self.hit_enemies.add(id(e))
-    
+
     def draw(self, screen):
         if self.dead:
             return
-        progress = min(1, self.age / self.duration)
+        min(1, self.age / self.duration)
         end_x = self.x + math.cos(self.angle) * self.length
         end_y = self.y + math.sin(self.angle) * self.length
         pygame.draw.line(screen, (255, 255, 150), (self.x, self.y), (end_x, end_y), 4)
@@ -99,6 +107,7 @@ class MeleeSlash:
 
 class ParabolicProjectile:
     """抛物线弹道，落地或命中时 AOE 爆炸"""
+
     def __init__(self, x, y, vx, vy, damage, aoe_radius=60, gravity=600, attr=None, self_reaction=None):
         self.x = x
         self.y = y
@@ -113,7 +122,7 @@ class ParabolicProjectile:
         self.dead = False
         self._exploded = False
         self.radius = 10
-    
+
     def update(self, dt):
         if self.dead:
             return
@@ -125,7 +134,7 @@ class ParabolicProjectile:
         ground = ARENA_Y + ARENA_H - 20
         if self.y >= ground or self.age >= 1.2:
             self._exploded = True
-    
+
     def _do_explode(self, enemies):
         """AOE 伤害"""
         sr = getattr(self, "self_reaction", None)
@@ -134,9 +143,9 @@ class ParabolicProjectile:
                 continue
             dx = e.rect.centerx - self.x
             dy = e.rect.centery - self.y
-            if dx*dx + dy*dy < self.aoe_radius ** 2:
+            if dx * dx + dy * dy < self.aoe_radius**2:
                 e.take_damage(self.damage, self.attr, enemies=enemies, self_reaction=sr)
-    
+
     def check_hit(self, enemies):
         if self.dead:
             return
@@ -150,11 +159,11 @@ class ParabolicProjectile:
                 continue
             dx = e.rect.centerx - self.x
             dy = e.rect.centery - self.y
-            if dx*dx + dy*dy < (self.radius + 15) ** 2:
+            if dx * dx + dy * dy < (self.radius + 15) ** 2:
                 self._do_explode(enemies)
                 self.dead = True
                 return
-    
+
     def draw(self, screen):
         if self.dead:
             return
@@ -166,6 +175,7 @@ class ParabolicProjectile:
 
 class FlameBeam:
     """烈焰冲击：直线粗火焰波，短持续"""
+
     def __init__(self, x, y, angle, length=180, width=45, duration=0.4, damage=35, attr=None, self_reaction=None):
         self.x = x
         self.y = y
@@ -179,12 +189,12 @@ class FlameBeam:
         self.age = 0
         self.dead = False
         self.hit_enemies = set()
-    
+
     def update(self, dt):
         self.age += dt
         if self.age >= self.duration:
             self.dead = True
-    
+
     def check_hit(self, enemies):
         if self.dead:
             return
@@ -200,9 +210,11 @@ class FlameBeam:
             proj = dx * cos_a + dy * sin_a
             perp = abs(-dx * sin_a + dy * cos_a)
             if 0 <= proj <= self.length and perp <= half_w:
-                e.take_damage(self.damage, self.attr, enemies=enemies, self_reaction=getattr(self, "self_reaction", None))
+                e.take_damage(
+                    self.damage, self.attr, enemies=enemies, self_reaction=getattr(self, "self_reaction", None)
+                )
                 self.hit_enemies.add(id(e))
-    
+
     def draw(self, screen):
         if self.dead:
             return
@@ -226,6 +238,7 @@ class FlameBeam:
 
 class SlowZone:
     """范围强减速（水牢/藤蔓）"""
+
     def __init__(self, x, y, radius=90, duration=3.5, slow_pct=70, slow_duration=1.5, color=(100, 180, 255)):
         self.x = x
         self.y = y
@@ -236,22 +249,22 @@ class SlowZone:
         self.color = color
         self.age = 0
         self.dead = False
-    
+
     def update(self, dt):
         self.age += dt
         if self.age >= self.duration:
             self.dead = True
-    
+
     def apply_to_enemies(self, enemies):
         for e in enemies:
             if e.dead:
                 continue
             dx = e.rect.centerx - self.x
             dy = e.rect.centery - self.y
-            if dx*dx + dy*dy < self.radius ** 2:
+            if dx * dx + dy * dy < self.radius**2:
                 e._superconduct_slow = self.slow_duration
                 e._superconduct_slow_pct = self.slow_pct
-    
+
     def draw(self, screen):
         if self.dead:
             return
@@ -265,6 +278,7 @@ class SlowZone:
 
 class EarthWall:
     """土墙：反弹弹道 + 击退敌人"""
+
     def __init__(self, x, y, angle, width=70, height=25, duration=3.5, knockback=70):
         self.rect = pygame.Rect(0, 0, width, height)
         self.rect.centerx = x
@@ -274,7 +288,7 @@ class EarthWall:
         self.knockback = knockback
         self.age = 0
         self.dead = False
-    
+
     def update(self, dt, enemies, enemy_projectiles, projectiles):
         self.age += dt
         if self.age >= self.duration:
@@ -297,13 +311,13 @@ class EarthWall:
                 continue
             dx = e.rect.centerx - self.rect.centerx
             dy = e.rect.centery - self.rect.centery
-            dist = math.sqrt(dx*dx + dy*dy)
+            dist = math.sqrt(dx * dx + dy * dy)
             if dist > 0:
                 dx /= dist
                 dy /= dist
                 e.rect.x += int(dx * self.knockback)
                 e.rect.y += int(dy * self.knockback)
-    
+
     def draw(self, screen):
         if self.dead:
             return
@@ -317,6 +331,7 @@ class EarthWall:
 
 class NeedleRainZone:
     """针雨区域：持续降下火针"""
+
     def __init__(self, x, y, radius, duration, tick_interval, damage_per_tick, attr, self_reaction):
         self.x = x
         self.y = y
@@ -329,13 +344,13 @@ class NeedleRainZone:
         self.timer = 0
         self.tick_timer = 0
         self.dead = False
-    
+
     def update(self, dt, enemies):
         self.timer += dt
         if self.timer >= self.duration:
             self.dead = True
             return
-        
+
         self.tick_timer += dt
         if self.tick_timer >= self.tick_interval:
             self.tick_timer = 0
@@ -345,9 +360,9 @@ class NeedleRainZone:
                     continue
                 dx = e.rect.centerx - self.x
                 dy = e.rect.centery - self.y
-                if dx*dx + dy*dy < self.radius * self.radius:
+                if dx * dx + dy * dy < self.radius * self.radius:
                     e.take_damage(self.damage_per_tick, self.attr, enemies=enemies, self_reaction=self.self_reaction)
-    
+
     def draw(self, screen):
         if self.dead:
             return
@@ -362,6 +377,7 @@ class NeedleRainZone:
 
 class GravityFieldZone:
     """重力场：拉扯敌人 + 持续伤害"""
+
     def __init__(self, x, y, radius, duration, pull_strength, tick_interval, damage_per_tick, attr, self_reaction):
         self.x = x
         self.y = y
@@ -375,20 +391,20 @@ class GravityFieldZone:
         self.timer = 0
         self.tick_timer = 0
         self.dead = False
-    
+
     def update(self, dt, enemies):
         self.timer += dt
         if self.timer >= self.duration:
             self.dead = True
             return
-        
+
         # 拉扯敌人
         for e in enemies:
             if e.dead:
                 continue
             dx = e.rect.centerx - self.x
             dy = e.rect.centery - self.y
-            dist_sq = dx*dx + dy*dy
+            dist_sq = dx * dx + dy * dy
             if dist_sq < self.radius * self.radius and dist_sq > 1:
                 dist = math.sqrt(dist_sq)
                 # 向中心拉
@@ -396,7 +412,7 @@ class GravityFieldZone:
                 pull_y = -dy / dist * self.pull_strength * dt
                 e.rect.x += pull_x
                 e.rect.y += pull_y
-        
+
         # 持续伤害
         self.tick_timer += dt
         if self.tick_timer >= self.tick_interval:
@@ -406,9 +422,9 @@ class GravityFieldZone:
                     continue
                 dx = e.rect.centerx - self.x
                 dy = e.rect.centery - self.y
-                if dx*dx + dy*dy < self.radius * self.radius:
+                if dx * dx + dy * dy < self.radius * self.radius:
                     e.take_damage(self.damage_per_tick, self.attr, enemies=enemies, self_reaction=self.self_reaction)
-    
+
     def draw(self, screen):
         if self.dead:
             return

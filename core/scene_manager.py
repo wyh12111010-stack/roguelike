@@ -1,19 +1,20 @@
 """
 场景管理器 - 场景注册、切换、委托 update/draw
 """
-from typing import Dict, Optional, Type, Any
+
+from typing import Any
 
 # 场景基类接口
 SceneBase = Any  # 避免循环导入，实际为 Scene
 
 
 class SceneManager:
-    _scenes: Dict[str, type] = {}
-    _current: Optional[Any] = None
+    _scenes: dict[str, type] = {}
+    _current: Any | None = None
     _current_name: str = ""
 
     @classmethod
-    def register(cls, name: str, scene_class: Type) -> None:
+    def register(cls, name: str, scene_class: type) -> None:
         """注册场景类"""
         cls._scenes[name] = scene_class
 
@@ -30,7 +31,7 @@ class SceneManager:
         return True
 
     @classmethod
-    def get_current(cls) -> Optional[Any]:
+    def get_current(cls) -> Any | None:
         return cls._current
 
     @classmethod

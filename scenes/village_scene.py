@@ -1,6 +1,17 @@
 """村子场景：村子内更新与绘制逻辑"""
-from village import draw as draw_village, LINGGEN_ZONE, FABAO_ZONE, CENTER_ZONE, PARTNER_ROOMS, EXIT_PORTAL, DEMO_PORTAL, VILLAGE_MAP_RECT, get_camera_offset
+
 from meta import meta
+from village import (
+    CENTER_ZONE,
+    DEMO_PORTAL,
+    EXIT_PORTAL,
+    FABAO_ZONE,
+    LINGGEN_ZONE,
+    PARTNER_ROOMS,
+    VILLAGE_MAP_RECT,
+    get_camera_offset,
+)
+from village import draw as draw_village
 
 
 class VillageScene:
@@ -11,12 +22,15 @@ class VillageScene:
         """村子内玩家移动，检测传送门。对话时禁止移动"""
         # 更新视觉效果
         from village_visual import update_village_visual
+
         update_village_visual(dt)
-        
+
         if game.village_dialogue:
             return
         import pygame
+
         from controls import action_pressed
+
         keys = pygame.key.get_pressed()
         bindings = getattr(meta, "keybinds", {})
         speed = 180
@@ -31,6 +45,7 @@ class VillageScene:
             dx += 1
         if dx or dy:
             import math
+
             length = math.sqrt(dx * dx + dy * dy)
             dx /= length
             dy /= length
@@ -64,13 +79,14 @@ class VillageScene:
         partner_can_heal = {}
         for pid in [p[2] for p in PARTNER_ROOMS]:
             from partner import can_heal_partner
+
             can, _ = can_heal_partner(pid, meta.daoyun, meta_stats, meta.partner_bond_levels)
             partner_can_heal[pid] = can
         cam = get_camera_offset(game.village_player)
-        
+
         # 渐进式呈现：根据解锁功能显示对应区域
         unlocked_features = getattr(meta, "unlocked_features", set())
-        
+
         draw_village(
             screen,
             game._avail_linggen,

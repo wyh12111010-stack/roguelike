@@ -2,10 +2,11 @@
 敌人组合和波次系统
 设计不同关卡的敌人组合，增加游戏深度和挑战性
 """
-from enemy import Enemy
-from attribute import Attr
+
 import random
 
+from attribute import Attr
+from enemy import Enemy
 
 # ==================== 敌人模板 ====================
 
@@ -64,8 +65,10 @@ ENEMY_TYPES = {
 
 # ==================== 敌人组合设计 ====================
 
+
 class EnemyWave:
     """单波敌人"""
+
     def __init__(self, enemy_types, delay=0.0):
         """
         enemy_types: [(type_name, count), ...]
@@ -73,7 +76,7 @@ class EnemyWave:
         """
         self.enemy_types = enemy_types
         self.delay = delay
-    
+
     def spawn(self, arena_x, arena_y, arena_w, arena_h, level_multiplier=1.0):
         """生成敌人列表"""
         enemies = []
@@ -81,7 +84,7 @@ class EnemyWave:
             template = ENEMY_TYPES.get(enemy_type)
             if not template:
                 continue
-            
+
             for _ in range(count):
                 # 随机位置（边缘生成）
                 side = random.choice(["top", "bottom", "left", "right"])
@@ -97,22 +100,23 @@ class EnemyWave:
                 else:  # right
                     x = arena_x + arena_w - 20
                     y = random.randint(arena_y, arena_y + arena_h)
-                
+
                 # 应用难度倍率
                 health = int(template["health"] * level_multiplier)
                 damage = int(template["damage"] * level_multiplier)
-                
+
                 enemy = Enemy(
-                    x, y,
+                    x,
+                    y,
                     health=health,
                     damage=damage,
                     speed=template["speed"],
                     ai_type=template["ai_type"],
                     attr=template["attr"],
-                    color=template["color"]
+                    color=template["color"],
                 )
                 enemies.append(enemy)
-        
+
         return enemies
 
 
@@ -186,6 +190,7 @@ WAVES_LATE = [
 
 # ==================== 波次系统 ====================
 
+
 def get_waves_for_level(level_index):
     """获取关卡的波次配置"""
     if level_index < 3:
@@ -238,51 +243,48 @@ def create_elite_enemy(x, y, base_type, modifier_name, level_multiplier=1.0):
     """创建精英怪"""
     template = ENEMY_TYPES.get(base_type)
     modifier = ELITE_MODIFIERS.get(modifier_name)
-    
+
     if not template or not modifier:
         return None
-    
+
     # 应用精英修正
     health = int(template["health"] * modifier.get("health_mult", 1.0) * level_multiplier)
     damage = int(template["damage"] * modifier.get("damage_mult", 1.0) * level_multiplier)
     speed = int(template["speed"] * modifier.get("speed_mult", 1.0))
-    
+
     # 颜色调整
     base_color = template["color"]
     tint = modifier.get("color_tint", (0, 0, 0))
-    color = tuple(min(255, c + t) for c, t in zip(base_color, tint))
-    
+    color = tuple(min(255, c + t) for c, t in zip(base_color, tint, strict=False))
+
     enemy = Enemy(
-        x, y,
-        health=health,
-        damage=damage,
-        speed=speed,
-        ai_type=template["ai_type"],
-        attr=template["attr"],
-        color=color
+        x, y, health=health, damage=damage, speed=speed, ai_type=template["ai_type"], attr=template["attr"], color=color
     )
-    
+
     # 标记为精英
     enemy.is_elite = True
     enemy.elite_modifier = modifier_name
-    
+
     return enemy
 
 
 # ==================== 使用示例 ====================
 
+
 def spawn_level_enemies(level_index, arena_x, arena_y, arena_w, arena_h):
     """生成关卡的所有敌人（分波次）"""
     waves = get_waves_for_level(level_index)
     multiplier = get_level_multiplier(level_index)
-    
+
     all_enemies = []
     for wave in waves:
         enemies = wave.spawn(arena_x, arena_y, arena_w, arena_h, multiplier)
-        all_enemies.append({
-            "enemies": enemies,
-            "delay": wave.delay,
-            "spawned": False,
-        })
-    
+        all_enemies.append(
+            {
+                "enemies": enemies,
+                "delay": wave.delay,
+                "spawned": False,
+            }
+        )
+
     return all_enemies

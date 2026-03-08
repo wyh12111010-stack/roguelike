@@ -1,0 +1,108 @@
+[project]
+name = "xiuxian-roguelike"
+version = "0.1.0"
+description = "修仙肉鸽 - Immortal Cultivation Roguelike"
+requires-python = ">=3.11"
+dependencies = [
+    "pygame>=2.6.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pytest>=8.0.0",
+]
+build = [
+    "pyinstaller>=6.0.0",
+]
+
+# ──────────────────── Ruff ────────────────────
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E701",   # multiple statements on one line (game code style)
+    "E722",   # bare except (legacy patterns)
+    "E741",   # ambiguous variable name (game code uses l, I, etc.)
+    "B904",   # raise from (too noisy for game code)
+    "B007",   # unused loop variable (game loops use _ patterns)
+    "B027",   # empty method without abstract (base class stubs)
+    "SIM102", # collapsible if (readability in game logic)
+    "SIM108", # ternary operator (readability)
+    "RUF001", # ambiguous unicode (Chinese characters)
+    "RUF002", # ambiguous unicode docstring
+    "RUF003", # ambiguous unicode comment
+    "RUF012", # mutable class default (pygame patterns)
+    "RUF013", # implicit optional (legacy signatures)
+    "RUF059", # unused unpacked variable
+    "UP015",  # redundant open mode
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B", "SIM"]
+"test_*.py" = ["B", "SIM"]
+"tools/*" = ["B", "SIM"]
+"enemy.py" = ["F401", "F403"]  # backward-compat shim uses star imports
+"enemies/__init__.py" = ["F401"]  # re-exports for backward compat
+"village.py" = ["F821"]  # runtime name check pattern
+"game.py" = ["F401"]  # conditional imports
+"main.py" = ["F401", "E402"]  # entry point delayed imports
+"config.py" = ["E402"]  # conditional pygame init
+"accessory_effects.py" = ["F401"]
+"fabao_data.py" = ["F401"]
+"build.py" = ["F401"]  # import-to-test availability
+"scripts/*" = ["F401"]  # import-to-test availability
+"demo_ui.py" = ["E402"]  # sys.path setup before imports
+"execute_tests.py" = ["E402"]
+"story.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "core", "systems", "scenes", "nodes", "player", "enemies",
+]
+
+# ──────────────────── Mypy ────────────────────
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+# 渐进式：仅对新模块启用严格检查
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "core.*",
+    "systems.*",
+    "scenes.*",
+    "player.*",
+    "enemies.*",
+]
+check_untyped_defs = true
+
+# ──────────────────── Pytest ────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests", "."]
+python_files = ["test_*.py"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "requires_pygame: tests that need pygame display init",
+]

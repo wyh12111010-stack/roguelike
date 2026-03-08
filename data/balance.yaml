@@ -1,0 +1,75 @@
+# ═══════════════════════════════════════════════
+# 修仙肉鸽 - 游戏平衡配置
+# 修改此文件即可调整数值，无需改动代码。
+# ═══════════════════════════════════════════════
+
+# ── 玩家基础属性 ──
+player:
+  base_speed: 200
+  max_health: 100
+  max_mana: 100
+  mana_regen: 3            # 每秒灵力恢复
+  dash_distance: 55
+  dash_cooldown: 0.8
+  dash_invincible: 0.12    # 闪避无敌时间（秒）
+
+# ── 敌人 ──
+enemy:
+  max_speed: 175
+
+# ── 经济：灵石（局内货币） ──
+economy:
+  lingshi_per_kill: 5
+  lingshi_per_level: 10
+  lingshi_elite_bonus: 15
+
+# ── 经济：道韵（局外货币） ──
+  daoyun_elite: 5
+  daoyun_boss: [8, 12, 16]       # 三Boss递增
+  daoyun_combat_reward: 3
+  daoyun_victory: 35
+
+# ── 商店 ──
+shop:
+  fabao_cost: 65
+  refresh_cost: 15
+  daoyun_fragment_cost: 35
+  daoyun_fragment_limit: 1        # 每局限购
+
+# ── 丹药 ──
+potion:
+  heal_pct: 50                    # 回春丹回复百分比
+
+# ── 元素伤害 ──
+damage:
+  resonance_mult: 1.2             # 灵根=法宝 同属性加成
+  reaction_mult: 1.1              # 异属性反应加成
+
+# ── 宝箱关奖励 ──
+treasure_rewards:
+  - type: potion
+    amount: 1
+  - type: lingshi
+    amount: 15
+
+# ── 屏幕与竞技场 ──
+display:
+  screen_width: 1600
+  screen_height: 900
+  fps: 60
+  arena_margin: 60
+  arena_x: 280
+
+# ── 颜色（RGB） ──
+colors:
+  player: [100, 200, 255]
+  enemy: [255, 100, 100]
+  projectile: [255, 255, 100]
+  bg: [30, 30, 40]
+  ui: [200, 200, 200]
+  arena: [60, 60, 80]
+  arena_border: [100, 100, 120]
+  hp_bar: [220, 60, 60]
+  hp_bg: [60, 30, 30]
+  mp_bar: [60, 120, 220]
+  mp_bg: [30, 50, 80]

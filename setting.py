@@ -1,13 +1,16 @@
 """
 基础设定 - 世界观、规则、身份、目标
 """
-from dataclasses import dataclass, field
-from typing import List
+
+from dataclasses import dataclass
+
+from balance_config import cfg as _cfg
 
 
 @dataclass
 class WorldSetting:
     """世界背景"""
+
     era: str
     region: str
     overview: str = ""
@@ -16,34 +19,38 @@ class WorldSetting:
 @dataclass
 class VillainSetting:
     """反派势力"""
+
     name: str
     desc: str
-    invasion: str      # 入侵
-    corruption: str    # 污染
-    seal: str          # 封印
+    invasion: str  # 入侵
+    corruption: str  # 污染
+    seal: str  # 封印
 
 
 @dataclass
 class VillageSetting:
     """村子 - 最后庇护所"""
+
     name: str
     desc: str
-    residents: str     # 村民身份
-    state: str         # 当前状态（虚弱）
+    residents: str  # 村民身份
+    state: str  # 当前状态（虚弱）
     cannot_leave: str  # 不能出去的理由
 
 
 @dataclass
 class ProtagonistSetting:
     """主角设定"""
-    world_will: str    # 世界意志
-    reincarnation: str # 轮回之力
-    immunity: str      # 不被污染
+
+    world_will: str  # 世界意志
+    reincarnation: str  # 轮回之力
+    immunity: str  # 不被污染
 
 
 @dataclass
 class ReincarnationRule:
     """轮回机制"""
+
     name: str
     desc: str
     trigger: str
@@ -54,25 +61,28 @@ class ReincarnationRule:
 @dataclass
 class CurrencySetting:
     """货币设定"""
+
     in_run_name: str
     in_run_desc: str
     meta_name: str
     meta_desc: str
     meta_use: str
-    meta_heal: str     # 治疗村民
+    meta_heal: str  # 治疗村民
 
 
 @dataclass
 class CompanionSetting:
     """伙伴机制"""
-    mark_desc: str     # 印记说明
-    heal_desc: str     # 治疗说明
-    result: str        # 治疗结果
+
+    mark_desc: str  # 印记说明
+    heal_desc: str  # 治疗说明
+    result: str  # 治疗结果
 
 
 @dataclass
 class CultivationRule:
     """修炼规则"""
+
     linggen_desc: str
     fabao_desc: str
     tribulation_desc: str
@@ -148,34 +158,31 @@ RULES = CultivationRule(
 
 # ========== 道韵获取（局外货币） ==========
 # 道韵仅在 Boss、精英关获得（以后可能事件关）。普通战斗、宝箱等不给道韵。
-DAOYUN_ELITE = 5              # 精英关过关
-DAOYUN_BOSS = (8, 12, 16)     # 三 Boss 关递增：妖王/剑魔/丹魔
-DAOYUN_COMBAT_REWARD = 3      # 战斗关奖励池抽到道韵时的局外道韵
-DAOYUN_VICTORY = 35           # 凯旋（通关全部）
+
+DAOYUN_ELITE = _cfg("economy.daoyun_elite", 5)
+DAOYUN_BOSS = tuple(_cfg("economy.daoyun_boss", [8, 12, 16]))
+DAOYUN_COMBAT_REWARD = _cfg("economy.daoyun_combat_reward", 3)
+DAOYUN_VICTORY = _cfg("economy.daoyun_victory", 35)
 # 身陨不添加道韵
 
 # ========== 灵石获取（局内货币） ==========
-# 粗略比例：一局约 50 击杀×5 + 12 过关×10 + 3 精英×15 ≈ 355 灵石；商店总价略高于此迫使选择
-LINGSHI_PER_KILL = 5      # 每击杀 1 敌人
-LINGSHI_PER_LEVEL = 10    # 每通关 1 关
-LINGSHI_ELITE_BONUS = 15  # 精英关额外灵石（设计：过关+25 vs 普通+10）
+LINGSHI_PER_KILL = _cfg("economy.lingshi_per_kill", 5)
+LINGSHI_PER_LEVEL = _cfg("economy.lingshi_per_level", 10)
+LINGSHI_ELITE_BONUS = _cfg("economy.lingshi_elite_bonus", 15)
 
 # ========== 丹药 ==========
-POTION_HEAL_PCT = 50     # 回春丹回复 50% 最大生命
+POTION_HEAL_PCT = _cfg("potion.heal_pct", 50)
 
 # ========== 元素伤害加成（灵根+法宝） ==========
-DAMAGE_RESONANCE_MULT = 1.2   # 相合：灵根=法宝，伤害 +20%
-DAMAGE_REACTION_MULT = 1.1    # 元素反应：不同属性，伤害 +10%
+DAMAGE_RESONANCE_MULT = _cfg("damage.resonance_mult", 1.2)
+DAMAGE_REACTION_MULT = _cfg("damage.reaction_mult", 1.1)
 
 # ========== 宝箱关 ==========
-# 奖励力度相同，随机一种类型（等价：1丹药 ≈ 15灵石）
-TREASURE_REWARDS = [
-    ("potion", 1),
-    ("lingshi", 15),
-]
+_raw_rewards = _cfg("treasure_rewards", [{"type": "potion", "amount": 1}, {"type": "lingshi", "amount": 15}])
+TREASURE_REWARDS = [(r["type"], r["amount"]) for r in _raw_rewards]
 
 # ========== 商店（局内灵石消费） ==========
-SHOP_FABAO_COST = 65          # 法宝价格（偏贵，已解锁才出现）
-SHOP_REFRESH_COST = 15       # 刷新一次价格
-SHOP_DAOYUN_FRAGMENT_COST = 35   # 道韵碎片 +1 道韵
-SHOP_DAOYUN_FRAGMENT_LIMIT = 1   # 道韵碎片每局限购
+SHOP_FABAO_COST = _cfg("shop.fabao_cost", 65)
+SHOP_REFRESH_COST = _cfg("shop.refresh_cost", 15)
+SHOP_DAOYUN_FRAGMENT_COST = _cfg("shop.daoyun_fragment_cost", 35)
+SHOP_DAOYUN_FRAGMENT_LIMIT = _cfg("shop.daoyun_fragment_limit", 1)

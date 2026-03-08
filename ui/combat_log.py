@@ -1,13 +1,19 @@
 """
 战斗日志 UI - 订阅事件，显示浮动消息
 """
+
 import pygame
 
 from config import get_font
 from core import EventBus
 from core.events import (
-    COMBAT_START, ENEMY_KILLED, PLAYER_HIT, PLAYER_DEATH,
-    LEVEL_CLEAR, VICTORY, SHOP_ENTER,
+    COMBAT_START,
+    ENEMY_KILLED,
+    LEVEL_CLEAR,
+    PLAYER_DEATH,
+    PLAYER_HIT,
+    SHOP_ENTER,
+    VICTORY,
 )
 from enemy import TYPE_LABELS
 

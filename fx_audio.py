@@ -1,12 +1,13 @@
 """轻量战斗提示音：无外部资源，运行时合成短音。"""
+
+import contextlib
 import math
-from array import array
 import time
+from array import array
 
 import pygame
 
 from meta import meta
-
 
 _SOUND_CACHE = {}
 _LAST_PLAY_AT = {}
@@ -69,10 +70,8 @@ def _get_tone(freq_hz, ms, volume):
     if not _ensure_mixer():
         return None
     snd = pygame.mixer.Sound(buffer=_build_tone(freq_hz=freq_hz, ms=ms, volume=volume))
-    try:
+    with contextlib.suppress(Exception):
         snd.set_volume(_effective_sfx_volume())
-    except Exception:
-        pass
     _SOUND_CACHE[key] = snd
     return snd
 
@@ -188,5 +187,89 @@ def play_player_attack(form="arc", attr=None):
             snd.set_volume(_effective_sfx_volume())
             snd.play()
             _LAST_PLAYER_AT = now
+        except Exception:
+            pass
+
+
+# ─── 额外反馈音效（P3a 接线） ───
+
+_LAST_HIT_AT = 0.0
+_LAST_KILL_AT = 0.0
+_LAST_DASH_AT = 0.0
+
+
+def play_hit_sfx():
+    """玩家受击短音：低频重击感。"""
+    global _LAST_HIT_AT
+    now = _now()
+    if now - _LAST_HIT_AT < 0.15:
+        return
+    snd = _get_tone(220, 80, 0.18)
+    if snd:
+        try:
+            snd.set_volume(_effective_sfx_volume())
+            snd.play()
+            _LAST_HIT_AT = now
+        except Exception:
+            pass
+
+
+def play_kill_sfx():
+    """敌人死亡短音：上升音调。"""
+    global _LAST_KILL_AT
+    now = _now()
+    if now - _LAST_KILL_AT < 0.08:
+        return
+    snd = _get_tone(680, 55, 0.12)
+    if snd:
+        try:
+            snd.set_volume(_effective_sfx_volume())
+            snd.play()
+            _LAST_KILL_AT = now
+        except Exception:
+            pass
+
+
+def play_dash_sfx():
+    """冲刺/闪避短音：快速刷风感。"""
+    global _LAST_DASH_AT
+    now = _now()
+    if now - _LAST_DASH_AT < 0.3:
+        return
+    snd = _get_tone(350, 45, 0.10)
+    if snd:
+        try:
+            snd.set_volume(_effective_sfx_volume())
+            snd.play()
+            _LAST_DASH_AT = now
+        except Exception:
+            pass
+
+
+def play_levelup_sfx():
+    """过关音效：升调和弦。"""
+    snd = _get_tone(520, 120, 0.15)
+    if snd:
+        try:
+            snd.set_volume(_effective_sfx_volume())
+            snd.play()
+        except Exception:
+            pass
+    snd2 = _get_tone(780, 100, 0.12)
+    if snd2:
+        try:
+            snd2.set_volume(_effective_sfx_volume())
+            snd2.play()
+        except Exception:
+            pass
+
+
+def play_death_sfx():
+    """玩家死亡音效：下降低音。"""
+    snd = _get_tone(180, 200, 0.20)
+    if snd:
+        try:
+            snd.set_volume(_effective_sfx_volume())
+            snd.play()
         except Exception:
             pass

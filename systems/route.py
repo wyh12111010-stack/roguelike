@@ -2,8 +2,8 @@
 路线系统 - 根据路线树返回可选下一节点
 设计对标 Tiny Rogues + 星座战士：每层 2/3 选，奖励类型在选路时随机抽取（非固定循环）
 """
+
 import random
-from typing import List, Tuple, Union, Dict
 
 # 战斗关奖励池：灵石/饰品常见，法宝较少，道韵最少（与已拍板方案一致）
 COMBAT_REWARD_WEIGHTS = {
@@ -13,9 +13,16 @@ COMBAT_REWARD_WEIGHTS = {
     "daoyun": 0.06,
 }
 COMBAT_REWARD_POOL = [
-    "lingshi", "lingshi", "lingshi", "lingshi",
-    "accessory", "accessory", "accessory", "accessory",
-    "fabao", "fabao",
+    "lingshi",
+    "lingshi",
+    "lingshi",
+    "lingshi",
+    "accessory",
+    "accessory",
+    "accessory",
+    "accessory",
+    "fabao",
+    "fabao",
     "daoyun",
 ]
 _RARE_REWARDS = {"fabao", "daoyun"}
@@ -35,7 +42,7 @@ def _roll_combat_reward(allow_rare=True):
     return random.choices(items, weights=weights, k=1)[0]
 
 
-def assign_combat_rewards_for_options(node_types: List[str]) -> List[Union[str, None]]:
+def assign_combat_rewards_for_options(node_types: list[str]) -> list[str | None]:
     """
     为一组选路选项分配奖励类型（仅 combat/elite 生效）。
     规则：同一批次最多 1 个稀有奖励（法宝/道韵），避免三选里连续爆稀有或全是低价值感知。
@@ -52,7 +59,7 @@ def assign_combat_rewards_for_options(node_types: List[str]) -> List[Union[str, 
     return reward_types
 
 
-def _get_choice_count(current_level: Union[int, str]) -> int:
+def _get_choice_count(current_level: int | str) -> int:
     """
     根据刚完成的节点决定显示 2 选还是 3 选。
     对标 Tiny Rogues + 星座战士：关 0 后 2 选，Boss 前关 4/9/14 后 2 选，其余 3 选
@@ -71,17 +78,18 @@ def _get_choice_count(current_level: Union[int, str]) -> int:
 
 
 def get_next_options(
-    current_level: Union[int, str],
-    route_tree: Dict = None,
-    entrance_names: Dict = None,
-    extra_options: List[Union[int, str]] = None,
-) -> List[Tuple[Union[int, str], str]]:
+    current_level: int | str,
+    route_tree: dict | None = None,
+    entrance_names: dict | None = None,
+    extra_options: list[int | str] | None = None,
+) -> list[tuple[int | str, str]]:
     """
     获取下一关可选列表（完整树，不抽样）。
     返回 [(level_id, name), ...]
     """
     if route_tree is None:
         from levels import ROUTE_TREE
+
         route_tree = ROUTE_TREE
     extra_options = extra_options or []
 
@@ -92,6 +100,7 @@ def get_next_options(
     result = []
     for lid in next_ids:
         from levels import get_node_display_name
+
         name = get_node_display_name(lid)
         result.append((lid, name))
     return result
@@ -102,10 +111,10 @@ class RouteSystem:
 
     @staticmethod
     def get_next_options(
-        current_level: Union[int, str],
-        route_tree: Dict = None,
-        extra_options: List = None,
-    ) -> List[Tuple[Union[int, str], str, str, str]]:
+        current_level: int | str,
+        route_tree: dict | None = None,
+        extra_options: list | None = None,
+    ) -> list[tuple[int | str, str, str, str]]:
         """
         过关后显示用：从完整树中抽样 2 或 3 个选项。
         返回 (level_id, name, node_type, reward_hint)，无难度星级。
@@ -118,7 +127,8 @@ class RouteSystem:
         count = min(count, len(options))
         sampled = random.sample(options, count)
 
-        from levels import get_node_type, get_node_reward_display
+        from levels import get_node_reward_display, get_node_type
+
         node_types = [get_node_type(lid) for lid, _ in sampled]
         reward_types = assign_combat_rewards_for_options(node_types)
         result = []

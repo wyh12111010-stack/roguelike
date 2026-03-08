@@ -1,24 +1,51 @@
-"""游戏主逻辑 - 接入 core/nodes 架构，见 docs/TECH_ARCHITECTURE.md"""
+"""游戏主逻辑 - 接入 core/nodes 架构，见 docs/TECH_ARCHITECTURE.md
+重构：统计追踪委托 StatisticsTracker，商店逻辑委托 ShopManager。
+"""
+
 import pygame
 
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, ARENA_X, ARENA_Y, ARENA_W, ARENA_H
+from config import ARENA_H, ARENA_W, ARENA_X, ARENA_Y, SCREEN_HEIGHT, SCREEN_WIDTH
 from core import EventBus, GameState
-from core.events import COMBAT_START, ENEMY_KILLED, LEVEL_CLEAR, SHOP_ENTER, VICTORY, PLAYER_DEATH, PLAYER_HIT, NODE_COMPLETE, ACHIEVEMENT_UNLOCKED
-from player import Player
-from enemy import Enemy, create_enemy, EnemyProjectile, AOEZone
-from levels import get_level_enemies, get_demo_enemies, get_boss_enemies, get_node_type, get_node_display_name, get_level_display, get_node_reward, get_node_reward_type, DEMO_NAMES, DEMO_ROUTE_TREE, LEVELS, ROUTE_TREE
-from systems import RouteSystem
-from systems.route import assign_combat_rewards_for_options
-from linggen import LINGGEN_LIST
+from core.events import (
+    ACHIEVEMENT_UNLOCKED,
+    COMBAT_START,
+    PLAYER_HIT,
+    SHOP_ENTER,
+    VICTORY,
+)
+from enemy import create_enemy
 from fabao import FABAO_LIST
+from levels import (
+    DEMO_NAMES,
+    DEMO_ROUTE_TREE,
+    ROUTE_TREE,
+    get_boss_enemies,
+    get_demo_enemies,
+    get_level_enemies,
+    get_node_display_name,
+    get_node_type,
+)
+from linggen import LINGGEN_LIST
 from meta import meta
-from save import persist_meta, RunSaveData, PlayerSaveData, save_run, clear_run_save
-from setting import DAOYUN_ELITE, DAOYUN_BOSS, DAOYUN_VICTORY, DAOYUN_COMBAT_REWARD, LINGSHI_PER_KILL, LINGSHI_PER_LEVEL, LINGSHI_ELITE_BONUS, TREASURE_REWARDS
-from village import LINGGEN_ZONE, FABAO_ZONE, CENTER_ZONE, PARTNER_ROOMS, EXIT_PORTAL, DEMO_PORTAL, VILLAGE_MAP_RECT, get_camera_offset
+from player import Player
+from save import PlayerSaveData, RunSaveData, clear_run_save, persist_meta, save_run
+from scenes import VillageScene
+from setting import (
+    DAOYUN_VICTORY,
+    LINGSHI_PER_LEVEL,
+    TREASURE_REWARDS,
+)
+from systems import RouteSystem
+from systems.combat import CombatSystem
+from systems.route import assign_combat_rewards_for_options
+from systems.shop_manager import ShopManager
+from systems.statistics import StatisticsTracker
 from ui import CombatLogUI
 from ui.ui_manager import UIManager
-from systems.combat import CombatSystem
-from scenes import VillageScene
+from village import (
+    PARTNER_ROOMS,
+    VILLAGE_MAP_RECT,
+)
 
 
 class Game:
@@ -28,74 +55,228 @@ class Game:
         self.combat_log = CombatLogUI()
         self.village_player = None
         self.particle_mgr = None
-        
+
         # 使用安全加载器加载可选系统
-        from utils.safe_loader import SafeModuleLoader, NullDamageText, NullScreenShake
-        
+        from utils.safe_loader import NullDamageText, NullScreenShake, SafeModuleLoader
+
         # 伤害飘字系统（可选）
         self.damage_text_mgr = SafeModuleLoader.load_optional_system(
-            'damage_text', 
-            'init_damage_text_manager',
-            fallback=NullDamageText(),
-            silent=True
+            "damage_text", "init_damage_text_manager", fallback=NullDamageText(), silent=True
         )
-        
+
         # 屏幕震动系统（可选）
         self.screen_shake = SafeModuleLoader.load_optional_system(
-            'screen_shake',
-            'init_screen_shake',
-            fallback=NullScreenShake(),
-            silent=True
+            "screen_shake", "init_screen_shake", fallback=NullScreenShake(), silent=True
         )
-        
+
         self.hit_flash_until = 0.0  # 受击闪红剩余时间（秒）
         self.char_panel_open = False  # 人物页面（灵根/法宝/饰品）
-        
+
         # 新 UI 系统
         self.ui_manager = UIManager(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.level_clear_pending = False  # 过关结算弹窗
         self.level_clear_timer = 0.0
         self.achievement_toast_until = 0.0  # 成就解锁 Toast
         self.achievement_toast_name = ""
-        
+
         # 秽源共鸣系统
         from resonance_system import ResonanceSystem
+
         self.resonance_system = ResonanceSystem()
         self.resonance_panel_open = False
-        
-        # 局内统计（用于成就检查）
-        self.max_combo = 0
-        self.current_combo = 0
-        self.combo_timer = 0.0
-        self.total_damage = 0
-        self.max_single_damage = 0
-        self.total_reactions = 0
-        self.vaporize_count = 0
-        self.melt_count = 0
-        self.overload_count = 0
-        self.max_lingshi = 0
-        self.shop_purchases = 0
-        self.potions_used = 0
-        self.max_accessories = 0
-        self.max_accessory_level = 0
-        self.low_health_survival_time = 0.0
-        self.combat_start_time = 0.0
-        self.boss_defeated_flags = {
-            "boss_1": False,
-            "boss_2": False,
-            "boss_3": False,
-            "final_boss": False,
-        }
-        
+
+        # 局内统计（委托 StatisticsTracker）
+        self.stats = StatisticsTracker()
+
+        # 商店管理（委托 ShopManager）
+        self.shop_mgr = ShopManager()
+
+        # 打击感/反馈系统接线
+        from game_juice import init_juice, wire_enemy_damage_text
+
+        init_juice(self)
+        wire_enemy_damage_text(self)
+
         EventBus.on(PLAYER_HIT, self._on_player_hit)
         EventBus.on(ACHIEVEMENT_UNLOCKED, self._on_achievement_unlocked)
         self._init_village()
-    
+
+    # ─── 向后兼容属性：统计字段委托到 self.stats ───
+    # 外部代码（systems/combat.py, ui/input_handler.py 等）可能直接读写这些属性
+    @property
+    def max_combo(self):
+        return self.stats.max_combo
+
+    @max_combo.setter
+    def max_combo(self, v):
+        self.stats.max_combo = v
+
+    @property
+    def current_combo(self):
+        return self.stats.current_combo
+
+    @current_combo.setter
+    def current_combo(self, v):
+        self.stats.current_combo = v
+
+    @property
+    def combo_timer(self):
+        return self.stats.combo_timer
+
+    @combo_timer.setter
+    def combo_timer(self, v):
+        self.stats.combo_timer = v
+
+    @property
+    def total_damage(self):
+        return self.stats.total_damage
+
+    @total_damage.setter
+    def total_damage(self, v):
+        self.stats.total_damage = v
+
+    @property
+    def max_single_damage(self):
+        return self.stats.max_single_damage
+
+    @max_single_damage.setter
+    def max_single_damage(self, v):
+        self.stats.max_single_damage = v
+
+    @property
+    def total_reactions(self):
+        return self.stats.total_reactions
+
+    @total_reactions.setter
+    def total_reactions(self, v):
+        self.stats.total_reactions = v
+
+    @property
+    def vaporize_count(self):
+        return self.stats.vaporize_count
+
+    @vaporize_count.setter
+    def vaporize_count(self, v):
+        self.stats.vaporize_count = v
+
+    @property
+    def melt_count(self):
+        return self.stats.melt_count
+
+    @melt_count.setter
+    def melt_count(self, v):
+        self.stats.melt_count = v
+
+    @property
+    def overload_count(self):
+        return self.stats.overload_count
+
+    @overload_count.setter
+    def overload_count(self, v):
+        self.stats.overload_count = v
+
+    @property
+    def max_lingshi(self):
+        return self.stats.max_lingshi
+
+    @max_lingshi.setter
+    def max_lingshi(self, v):
+        self.stats.max_lingshi = v
+
+    @property
+    def shop_purchases(self):
+        return self.stats.shop_purchases
+
+    @shop_purchases.setter
+    def shop_purchases(self, v):
+        self.stats.shop_purchases = v
+
+    @property
+    def potions_used(self):
+        return self.stats.potions_used
+
+    @potions_used.setter
+    def potions_used(self, v):
+        self.stats.potions_used = v
+
+    @property
+    def max_accessories(self):
+        return self.stats.max_accessories
+
+    @max_accessories.setter
+    def max_accessories(self, v):
+        self.stats.max_accessories = v
+
+    @property
+    def max_accessory_level(self):
+        return self.stats.max_accessory_level
+
+    @max_accessory_level.setter
+    def max_accessory_level(self, v):
+        self.stats.max_accessory_level = v
+
+    @property
+    def low_health_survival_time(self):
+        return self.stats.low_health_survival_time
+
+    @low_health_survival_time.setter
+    def low_health_survival_time(self, v):
+        self.stats.low_health_survival_time = v
+
+    @property
+    def combat_start_time(self):
+        return self.stats.combat_start_time
+
+    @combat_start_time.setter
+    def combat_start_time(self, v):
+        self.stats.combat_start_time = v
+
+    @property
+    def boss_defeated_flags(self):
+        return self.stats.boss_defeated_flags
+
+    @boss_defeated_flags.setter
+    def boss_defeated_flags(self, v):
+        self.stats.boss_defeated_flags = v
+
+    # ─── 向后兼容属性：商店字段委托到 self.shop_mgr ───
+    @property
+    def _shop_daoyun_bought(self):
+        return self.shop_mgr.daoyun_bought
+
+    @_shop_daoyun_bought.setter
+    def _shop_daoyun_bought(self, v):
+        self.shop_mgr.daoyun_bought = v
+
+    @property
+    def _shop_fabao_id(self):
+        return self.shop_mgr.fabao_id
+
+    @_shop_fabao_id.setter
+    def _shop_fabao_id(self, v):
+        self.shop_mgr.fabao_id = v
+
+    @property
+    def _shop_refresh_remaining(self):
+        return self.shop_mgr.refresh_remaining
+
+    @_shop_refresh_remaining.setter
+    def _shop_refresh_remaining(self, v):
+        self.shop_mgr.refresh_remaining = v
+
+    @property
+    def _shop_shown_fabao_ids(self):
+        return self.shop_mgr.shown_fabao_ids
+
+    @_shop_shown_fabao_ids.setter
+    def _shop_shown_fabao_ids(self, v):
+        self.shop_mgr.shown_fabao_ids = v
+
     def _get_max_attack_speed_pct(self):
         """计算当前最大攻速百分比（用于成就检查）"""
         if not hasattr(self, "player") or not self.player:
             return 0
-        
+
         base_cd = 0.4  # 基础攻击间隔
         current_cd = self.player._get_attack_cooldown(base_cd)
         speed_pct = int((base_cd / current_cd - 1) * 100)
@@ -104,69 +285,39 @@ class Game:
     def _on_player_hit(self, damage=0):
         """受击时触发闪红"""
         self.hit_flash_until = 0.12
-    
+
     def _on_enemy_killed(self, enemy=None):
         """敌人被击杀时更新统计"""
-        # 更新连击
-        self.current_combo += 1
-        self.combo_timer = 2.0  # 2秒内不击杀则连击清零
-        if self.current_combo > self.max_combo:
-            self.max_combo = self.current_combo
-    
+        self.stats.on_enemy_killed(enemy)
+
     def _on_damage_dealt(self, damage=0):
         """造成伤害时更新统计"""
-        self.total_damage += damage
-        if damage > self.max_single_damage:
-            self.max_single_damage = damage
-    
+        self.stats.on_damage_dealt(damage)
+
     def _on_reaction_triggered(self, reaction_type=""):
         """触发元素反应时更新统计"""
-        self.total_reactions += 1
-        if reaction_type == "vaporize":
-            self.vaporize_count += 1
-        elif reaction_type == "melt":
-            self.melt_count += 1
-        elif reaction_type == "overload":
-            self.overload_count += 1
-    
+        self.stats.on_reaction_triggered(reaction_type)
+
     def _update_combat_stats(self, dt):
         """更新战斗统计（每帧调用）"""
-        # 更新连击计时器
-        if self.combo_timer > 0:
-            self.combo_timer -= dt
-            if self.combo_timer <= 0:
-                self.current_combo = 0
-        
-        # 更新最大灵石
-        if hasattr(self, "player") and self.player:
-            if self.player.lingshi > self.max_lingshi:
-                self.max_lingshi = self.player.lingshi
-            
-            # 更新最大饰品数
-            acc_count = len(getattr(self.player, "accessories", []))
-            if acc_count > self.max_accessories:
-                self.max_accessories = acc_count
-            
-            # 更新最大饰品等级
-            for acc, lv in getattr(self.player, "accessories", []):
-                if lv > self.max_accessory_level:
-                    self.max_accessory_level = lv
-            
-            # 低血生存时间统计
-            if self.player.health > 0 and self.player.health < 10:
-                self.low_health_survival_time += dt
+        player = self.player if hasattr(self, "player") else None
+        self.stats.update(dt, player)
 
     def _on_achievement_unlocked(self, achievement_id="", name=""):
         """成就解锁时显示 Toast"""
         self.achievement_toast_name = name or achievement_id
         self.achievement_toast_until = 2.0
-    
+
     def _heal_partner(self, partner_id):
         """治疗伙伴：首次解锁或羁绊升级"""
-        from partner import can_heal_partner, get_partner, get_bond_level
+        from partner import can_heal_partner, get_partner
+
         meta_stats = {
-            "kills": meta.total_kills, "levels": meta.total_levels_cleared,
-            "wins": meta.total_wins, "element_dmg": meta.total_element_damage, "deaths": meta.total_deaths,
+            "kills": meta.total_kills,
+            "levels": meta.total_levels_cleared,
+            "wins": meta.total_wins,
+            "element_dmg": meta.total_element_damage,
+            "deaths": meta.total_deaths,
         }
         can, action = can_heal_partner(partner_id, meta.daoyun, meta_stats, meta.partner_bond_levels)
         if not can or not action:
@@ -179,10 +330,12 @@ class Game:
             meta.partner_bond_levels[partner_id] = 1
         else:
             from partner import get_upgrade_cost
+
             cost = get_upgrade_cost(partner_id, meta.partner_bond_levels.get(partner_id, 1))
             meta.daoyun -= cost
             meta.partner_bond_levels[partner_id] = meta.partner_bond_levels.get(partner_id, 1) + 1
         from achievement import unlock_achievement
+
         unlock_achievement("heal_partner")
         all_ids = [r[2] for r in PARTNER_ROOMS]
         if all(meta.partner_bond_levels.get(pid, 0) >= 1 for pid in all_ids):
@@ -219,9 +372,16 @@ class Game:
             return True
         if self.scene == "combat" and (self.game_over or self.victory):
             return False
-        if self.scene == "combat" and (self.route_options or self.in_shop or getattr(self, "fabao_reward_pending", False)):
+        if self.scene == "combat" and (
+            self.route_options or self.in_shop or getattr(self, "fabao_reward_pending", False)
+        ):
             return True
-        if self.scene == "combat" and len(self.enemies) == 0 and not self.route_options and not getattr(self, "fabao_reward_pending", False):
+        if (
+            self.scene == "combat"
+            and len(self.enemies) == 0
+            and not self.route_options
+            and not getattr(self, "fabao_reward_pending", False)
+        ):
             return False  # 刚清完敌，下一帧才显示 route_options
         return False
 
@@ -231,7 +391,11 @@ class Game:
             return False
         vpx = self.village_player.centerx if self.village_player else 0
         vpy = self.village_player.centery if self.village_player else 0
-        fid = self._avail_fabao[self.fabao_choice].id if self._avail_fabao and 0 <= self.fabao_choice < len(self._avail_fabao) else ""
+        fid = (
+            self._avail_fabao[self.fabao_choice].id
+            if self._avail_fabao and 0 <= self.fabao_choice < len(self._avail_fabao)
+            else ""
+        )
         data = RunSaveData(
             scene=self.scene,
             linggen_choice=self.linggen_choice,
@@ -244,15 +408,24 @@ class Game:
             data.run_potions = getattr(self, "run_potions", 0)
             p = self.player
             lg_id = p.linggen.id if p.linggen else "fire"
-            fb_ids = [f.id for f in getattr(p, "fabao_list", [])] if getattr(p, "fabao_list", []) else ([p.fabao.id] if p.fabao else ["sword"])
+            fb_ids = (
+                [f.id for f in getattr(p, "fabao_list", [])]
+                if getattr(p, "fabao_list", [])
+                else ([p.fabao.id] if p.fabao else ["sword"])
+            )
             acc_list = [(a.id, lv) for a, lv in getattr(p, "accessories", [])]
             data.player = PlayerSaveData(
-                x=p.rect.centerx, y=p.rect.centery,
-                health=p.health, max_health=p.max_health,
-                mana=p.mana, max_mana=p.max_mana,
+                x=p.rect.centerx,
+                y=p.rect.centery,
+                health=p.health,
+                max_health=p.max_health,
+                mana=p.mana,
+                max_mana=p.max_mana,
                 lingshi=p.lingshi,
-                linggen_id=lg_id, fabao_id=fb_ids[0] if fb_ids else "sword",
-                fabao_ids=fb_ids, current_fabao_index=getattr(p, "current_fabao_index", 0),
+                linggen_id=lg_id,
+                fabao_id=fb_ids[0] if fb_ids else "sword",
+                fabao_ids=fb_ids,
+                current_fabao_index=getattr(p, "current_fabao_index", 0),
                 accessories=acc_list,
                 fabao_damage_pct=getattr(p, "fabao_damage_pct", 0),
                 fabao_speed_pct=getattr(p, "fabao_speed_pct", 0),
@@ -320,13 +493,14 @@ class Game:
         GameState.get().run_data.kill_count = data.kill_count
         GameState.get().run_data.current_node_index = data.current_level
         if data.player:
-            from config import ARENA_X, ARENA_Y, ARENA_W, ARENA_H
+            from config import ARENA_H, ARENA_W, ARENA_X, ARENA_Y
+
             self.player = Player(ARENA_X + ARENA_W // 2, ARENA_Y + ARENA_H // 2)
-            
+
             # 设置 UI 管理器的玩家引用
-            if hasattr(self, 'ui_manager'):
+            if hasattr(self, "ui_manager"):
                 self.ui_manager.set_player(self.player)
-            
+
             p = data.player
             self.player.rect.centerx = p.x
             self.player.rect.centery = p.y
@@ -347,6 +521,7 @@ class Game:
             elif fb_list:
                 self.player.set_fabao(fb_list[0])
             from accessory import get_accessory
+
             self.player.accessories = []
             for aid, lv in getattr(p, "accessories", []):
                 acc = get_accessory(aid)
@@ -366,6 +541,7 @@ class Game:
     def _restore_route_options(self, level_ids):
         """根据 level_ids 恢复路线选择 UI，恢复时重新抽取奖励类型"""
         from levels import get_node_reward_display
+
         entrance_h = 60
         if len(level_ids) > 7:
             entrance_w, gap = 65, 12
@@ -390,43 +566,22 @@ class Game:
             reward_type = reward_types[i]
             reward_hint = get_node_reward_display(level_id, reward_type)
             self.route_options.append((level_id, rect, name, reward_type, reward_hint))
-    
+
     def _start_combat(self, demo=False):
         """从村子外出，进入战斗阶段"""
         meta.total_runs += 1
         self.scene = "combat"
-        
-        # 初始化统计数据
-        import time
-        self.combat_start_time = time.time()
-        self.max_combo = 0
-        self.current_combo = 0
-        self.combo_timer = 0.0
-        self.total_damage = 0
-        self.max_single_damage = 0
-        self.total_reactions = 0
-        self.vaporize_count = 0
-        self.melt_count = 0
-        self.overload_count = 0
-        self.max_lingshi = 0
-        self.shop_purchases = 0
-        self.potions_used = 0
-        self.max_accessories = 0
-        self.max_accessory_level = 0
-        self.low_health_survival_time = 0.0
-        self.boss_defeated_flags = {
-            "boss_1": False,
-            "boss_2": False,
-            "boss_3": False,
-            "final_boss": False,
-        }
-        
+
+        # 重置统计与商店
+        self.stats.reset()
+        self.shop_mgr.reset()
+
         self.player = Player(ARENA_X + ARENA_W // 2, ARENA_Y + ARENA_H // 2)
-        
+
         # 设置 UI 管理器的玩家引用
-        if hasattr(self, 'ui_manager'):
+        if hasattr(self, "ui_manager"):
             self.ui_manager.set_player(self.player)
-        
+
         self.enemies = []
         self.pending_enemies = []
         self.enemy_spawn_timer = 0.0
@@ -438,13 +593,13 @@ class Game:
         self.earth_walls = []
         if self.particle_mgr is None:
             from particles import ParticleManager
+
             self.particle_mgr = ParticleManager()
         self.particle_mgr.clear()
         if not hasattr(self, "_reaction_handler") or self._reaction_handler is None:
             from reaction_effects import ReactionEffectHandler
-            self._reaction_handler = ReactionEffectHandler(
-                lambda: {"enemies": self.enemies, "player": self.player}
-            )
+
+            self._reaction_handler = ReactionEffectHandler(lambda: {"enemies": self.enemies, "player": self.player})
         self.demo_mode = demo
         self.demo_level = 0
         self.game_over = False
@@ -462,11 +617,6 @@ class Game:
         self.in_shop = False
         self.fabao_reward_pending = False
         self.run_potions = min(meta.potion_stock, meta.potion_cap)  # 局内丹药从存量带入，不超过上限
-        # 商店状态（新局重置）
-        self._shop_daoyun_bought = False
-        self._shop_fabao_id = None
-        self._shop_refresh_remaining = getattr(meta, "shop_refresh_count", 1)
-        self._shop_shown_fabao_ids = []
         self.combat_log.clear()
         EventBus.emit(COMBAT_START, demo=demo)
         # 局外加成（关卡在设定完玩家后加载）
@@ -474,15 +624,15 @@ class Game:
         self.player.health = self.player.max_health
         self.player.max_mana = 100 + meta.base_mana_bonus
         self.player.mana = self.player.max_mana
-        
+
         # 应用局外永久加成
         self.player.apply_meta_bonuses()
-        
+
         # 应用侵蚀度效果（如果已解锁）
         if "erosion_system" in meta.unlocked_features:
             self.player.erosion_level = meta.erosion_level
             self.player.apply_erosion_effects()
-        
+
         # 使用村子内选择的灵根、法宝（进入战斗前只选一个）
         self.player.set_linggen(self._avail_linggen[self.linggen_choice])
         idx = min(self.fabao_choice, len(self._avail_fabao) - 1) if self._avail_fabao else 0
@@ -505,7 +655,9 @@ class Game:
         self.player.partner_charge_max = 100
         # 开局饰品（局外成长）：0=无 1=随机1个 2=二选一 3=三选一
         import random
+
         from accessory import ACCESSORY_LIST
+
         start_mode = getattr(meta, "start_accessory_mode", 0)
         unlocked_acc = set(getattr(meta, "unlocked_accessories", ["dmg_s", "mp"]))
         candidates = [a for a in ACCESSORY_LIST if a.id in unlocked_acc]
@@ -531,12 +683,10 @@ class Game:
 
     def _spawn_enemy_tuple(self, enemy_tuple):
         x, y, health, speed, damage, etype, attr, behavior = enemy_tuple
-        self.enemies.append(create_enemy(
-            etype, x, y,
-            behavior=behavior,
-            health=health, speed=speed, damage=damage, attr=attr
-        ))
-    
+        self.enemies.append(
+            create_enemy(etype, x, y, behavior=behavior, health=health, speed=speed, damage=damage, attr=attr)
+        )
+
     def add_run_potions(self, n: int):
         """局内获得丹药（休息关、Boss关、宝箱关调用）"""
         cap = meta.potion_cap
@@ -565,8 +715,10 @@ class Game:
 
     def _show_fabao_reward_selection(self):
         """过关法宝奖励：三选一，可选更换主/副法宝"""
-        from fabao import FABAO_LIST
         import random
+
+        from fabao import FABAO_LIST
+
         avail = [fb for fb in FABAO_LIST if fb.id in meta.unlocked_fabao] or FABAO_LIST
         opts = random.sample(avail, min(3, len(avail)))
         self.fabao_reward_pending = True
@@ -588,13 +740,17 @@ class Game:
 
     def _grant_accessory_reward(self):
         """过关奖励：随机获得一个已解锁饰品"""
-        from accessory import ACCESSORY_LIST
         import random
+
+        from accessory import ACCESSORY_LIST
+
         acc_list = getattr(self.player, "accessories", [])
         have_ids = {a.id for a, _ in acc_list}
         unlocked = set(getattr(meta, "unlocked_accessories", ["dmg_s", "mp"]))
         slot_cap = getattr(meta, "accessory_slots", 6)
-        candidates = [a for a in ACCESSORY_LIST if a.id not in have_ids and a.id in unlocked and len(acc_list) < slot_cap]
+        candidates = [
+            a for a in ACCESSORY_LIST if a.id not in have_ids and a.id in unlocked and len(acc_list) < slot_cap
+        ]
         if not candidates:
             self.player.lingshi += LINGSHI_PER_LEVEL
             return
@@ -604,6 +760,7 @@ class Game:
     def _enter_treasure(self):
         """宝箱关：奖励力度相同，随机一种物品类型"""
         import random
+
         reward_type, value = random.choice(TREASURE_REWARDS)
         if reward_type == "potion":
             self.add_run_potions(value)
@@ -617,11 +774,13 @@ class Game:
     def _enter_event(self, event_node_id):
         """事件关：随机事件，选项二选一，结算后选路"""
         from achievement import unlock_achievement
+
         unlock_achievement("enter_event")
-        from event_events import pick_random_event, apply_event_effect
+        from event_events import pick_random_event
         from levels import MAJOR_OF
+
         major_idx = MAJOR_OF.get(str(event_node_id), 0)
-        ev_id, text, options = pick_random_event(major_idx)
+        _ev_id, text, options = pick_random_event(major_idx)
         self.event_pending = True
         self.event_node_id = event_node_id
         self.event_text = text
@@ -634,8 +793,9 @@ class Game:
     def _finish_event(self, option_index: int):
         """选择事件选项后结算，进入选路"""
         from event_events import apply_event_effect
-        opt_text, effect = self.event_options[option_index]
-        msgs = apply_event_effect(effect, self.player, self.add_run_potions)
+
+        _opt_text, effect = self.event_options[option_index]
+        apply_event_effect(effect, self.player, self.add_run_potions)
         self.event_pending = False
         self.event_node_id = None
         self.event_text = None
@@ -645,105 +805,16 @@ class Game:
 
     def _ensure_shop_state(self):
         """进入商店时确保商品已生成（首次进店或刷新后）"""
-        if getattr(self, "_shop_fabao_id", None) is not None:
-            return
-        from shop import gen_shop_fabao
-        fb = gen_shop_fabao(meta.unlocked_fabao, [])
-        if fb:
-            self._shop_fabao_id = fb.id
-            self._shop_shown_fabao_ids = [fb.id]
-        else:
-            self._shop_fabao_id = None
-            self._shop_shown_fabao_ids = []
+        self.shop_mgr.ensure_state()
 
     def _shop_refresh(self):
         """商店刷新：重新随机法宝，排除已出现过的"""
-        from shop import gen_shop_fabao
-        shown = set(getattr(self, "_shop_shown_fabao_ids", []))
-        fb = gen_shop_fabao(meta.unlocked_fabao, list(shown))
-        if fb:
-            self._shop_fabao_id = fb.id
-            self._shop_shown_fabao_ids = list(shown) + [fb.id]
-        else:
-            self._shop_fabao_id = None
+        self.shop_mgr.refresh()
 
     def _buy_item(self, item_type, item_id, cost):
-        """商店购买：法宝、道韵碎片、刷新、法宝强化、饰品、饰品升级"""
-        if self.player.lingshi < cost:
-            return
-        if item_type == "fabao_buy":
-            have_ids = {f.id for f in getattr(self.player, "fabao_list", [])}
-            if item_id in have_ids or len(have_ids) >= 2:
-                return
-        if item_type == "daoyun_fragment":
-            if getattr(self, "_shop_daoyun_bought", False):
-                return
-        if item_type == "refresh":
-            if getattr(self, "_shop_refresh_remaining", 0) <= 0:
-                return
-        if item_type == "accessory":
-            from shop import _has_accessory
-            if _has_accessory(self.player, item_id):
-                return
-            if len(self.player.accessories) >= getattr(meta, "accessory_slots", 6):
-                return
-        if item_type == "upgrade":
-            idx = item_id
-            if idx < 0 or idx >= len(self.player.accessories):
-                return
-            acc, lv = self.player.accessories[idx]
-            if lv >= acc.max_level:
-                return
-        if item_type == "fabao":
-            _fid, etype, val = item_id
-            from shop import get_fabao_upgrade_offer
-            offer = get_fabao_upgrade_offer(self.player, etype)
-            if offer is None:
-                return
-            # 价格与步进必须匹配当前档位，防止异常输入绕过上限/成本曲线
-            if int(cost) != int(offer["cost"]) or int(val) != int(offer["step"]):
-                return
-        
-        self.player.lingshi -= cost
-        self.shop_purchases += 1  # 更新购买次数统计
-        
-        if item_type == "fabao_buy":
-            from fabao import FABAO_LIST
-            fb = next((f for f in FABAO_LIST if f.id == item_id), None)
-            if fb:
-                if self.player.fabao:
-                    self.player.set_fabao_pair(self.player.fabao, fb)
-                else:
-                    self.player.set_fabao(fb)
-            self._shop_fabao_id = None  # 买走后清空展示
-        elif item_type == "daoyun_fragment":
-            meta.daoyun += 1
-            persist_meta()
-            self._shop_daoyun_bought = True
-        elif item_type == "refresh":
-            self._shop_refresh_remaining = getattr(self, "_shop_refresh_remaining", 1) - 1
-            self._shop_refresh()
-        elif item_type == "fabao":
-            fid, etype, val = item_id
-            if etype == "damage_pct":
-                self.player.fabao_damage_pct = min(50, self.player.fabao_damage_pct + val)
-            elif etype == "speed_pct":
-                self.player.fabao_speed_pct = min(25, self.player.fabao_speed_pct + val)
-        elif item_type == "accessory":
-            from accessory import get_accessory
-            acc = get_accessory(item_id)
-            if acc:
-                self.player.add_accessory(acc, 1)
-        elif item_type == "upgrade":
-            self.player.upgrade_accessory(item_id)
-        
-        # 贫瘠之核：购买物品时额外获得随机饰品
-        from accessory_effects import trigger_barren_moderate
-        bonus_acc = trigger_barren_moderate(self.player)
-        if bonus_acc:
-            # 显示提示（可选）
-            pass
-    
+        """商店购买：委托 ShopManager"""
+        self.shop_mgr.buy_item(item_type, item_id, cost, self.player, self.stats)
+
     def _load_level(self, level_index, elite=False):
         """加载关卡，生成固定敌人。选择路线后玩家重置到中心，敌人立即出现。elite=True 时敌人血攻强化"""
         self.enemies.clear()
@@ -775,7 +846,7 @@ class Game:
         else:
             for e in level_enemies:
                 self._spawn_enemy_tuple(e)
-        
+
         # 应用共鸣效果到所有敌人
         for enemy in self.enemies:
             self.resonance_system.apply_to_enemy(enemy)
@@ -801,7 +872,9 @@ class Game:
         self.player.rect.centerx = ARENA_X + ARENA_W // 2
         self.player.rect.centery = ARENA_Y + ARENA_H // 2
         for x, y, health, speed, damage, etype, attr, behavior in get_demo_enemies(demo_level):
-            self.enemies.append(create_enemy(etype, x, y, behavior=behavior, health=health, speed=speed, damage=damage, attr=attr))
+            self.enemies.append(
+                create_enemy(etype, x, y, behavior=behavior, health=health, speed=speed, damage=damage, attr=attr)
+            )
 
     def _load_boss(self, boss_id):
         """加载 Boss 关卡。选择路线后玩家重置到中心，Boss 立即出现"""
@@ -823,14 +896,21 @@ class Game:
         self.player.rect.centerx = ARENA_X + ARENA_W // 2
         self.player.rect.centery = ARENA_Y + ARENA_H // 2
         for i, (x, y, health, speed, damage, etype, attr, behavior) in enumerate(get_boss_enemies(boss_id)):
-            self.enemies.append(create_enemy(
-                etype, x, y,
-                behavior=behavior,
-                boss_id=boss_id,
-                enemy_index=i,
-                health=health, speed=speed, damage=damage, attr=attr
-            ))
-    
+            self.enemies.append(
+                create_enemy(
+                    etype,
+                    x,
+                    y,
+                    behavior=behavior,
+                    boss_id=boss_id,
+                    enemy_index=i,
+                    health=health,
+                    speed=speed,
+                    damage=damage,
+                    attr=attr,
+                )
+            )
+
     def _show_demo_route_selection(self):
         """演示关卡：清敌后显示下一关或完成"""
         next_levels = DEMO_ROUTE_TREE.get(self.demo_level, [])
@@ -850,84 +930,41 @@ class Game:
         sampled = RouteSystem.get_next_options(self.current_level, ROUTE_TREE)
         if not sampled:
             self.victory = True
-            
+
             # 应用共鸣道韵倍率
             daoyun_mult = self.resonance_system.get_daoyun_multiplier()
             self._victory_daoyun = int(DAOYUN_VICTORY * daoyun_mult)
-            
-            # 收集局内统计数据
-            import time
-            clear_time = int(time.time() - self.combat_start_time) if self.combat_start_time > 0 else 0
-            
+
             # 收集共鸣数据
             resonance_intensity = self.resonance_system.get_total_intensity()
             active_pacts = [f"{pact.type}_{pact.level}" for pact in self.resonance_system.active_pacts]
-            
-            stats = {
-                # 战斗统计
-                "max_attack_speed": self._get_max_attack_speed_pct(),
-                "max_combo": self.max_combo,
-                "total_damage": self.total_damage,
-                "max_single_damage": self.max_single_damage,
-                "kill_count": self.kill_count,
-                
-                # 元素反应统计
-                "total_reactions": self.total_reactions,
-                "vaporize_count": self.vaporize_count,
-                "melt_count": self.melt_count,
-                "overload_count": self.overload_count,
-                
-                # 经济统计
-                "max_lingshi": self.max_lingshi,
-                "shop_purchases": self.shop_purchases,
-                
-                # 装备统计
-                "max_accessories": self.max_accessories,
-                "max_accessory_level": self.max_accessory_level,
-                
-                # 挑战统计
-                "clear_time": clear_time,
-                "potions_used": self.potions_used,
-                "low_health_survival": int(self.low_health_survival_time),
-                "final_health": self.player.health if hasattr(self, "player") and self.player else 0,
-                
-                # Boss 击败标记
-                "boss_1_defeated": self.boss_defeated_flags.get("boss_1", False),
-                "boss_2_defeated": self.boss_defeated_flags.get("boss_2", False),
-                "boss_3_defeated": self.boss_defeated_flags.get("boss_3", False),
-                "final_boss_defeated": self.boss_defeated_flags.get("final_boss", False),
-                
-                # 流派统计
-                "linggen": self.player.linggen.id if hasattr(self, "player") and self.player and self.player.linggen else "",
-                "victory": True,
-                
-                # 共鸣统计
-                "resonance_intensity": resonance_intensity,
-                "active_pacts": active_pacts,
-                
-                # 局外统计
-                "total_wins": meta.total_wins,
-                "total_kills": meta.total_kills,
-                "total_daoyun": meta.daoyun,
-                "linggen_unlocked": len(meta.unlocked_linggen),
-                "fabao_unlocked": len(meta.unlocked_fabao),
-                "partners_healed": len([pid for pid, lv in meta.partner_bond_levels.items() if lv >= 1]),
-            }
-            
+
+            # 收集局内统计数据（委托 StatisticsTracker）
+            self.stats._kill_count = self.kill_count
+            stats = self.stats.collect_stats(
+                self.player if hasattr(self, "player") else None,
+                meta,
+                max_attack_speed_pct=self._get_max_attack_speed_pct(),
+                resonance_intensity=resonance_intensity,
+                active_pacts=active_pacts,
+            )
+
             # 检查成就并解锁功能
             new_achievements = meta.on_win(self._victory_daoyun, stats)
-            
+
             # 显示新解锁的成就
             for ach_id in new_achievements:
                 from achievement import get_achievement
+
                 ach = get_achievement(ach_id)
                 if ach:
                     EventBus.emit(ACHIEVEMENT_UNLOCKED, achievement_id=ach_id, name=ach["name"])
-            
+
             meta.potion_stock = min(getattr(self, "run_potions", 0), meta.potion_cap)
             persist_meta()
             clear_run_save()  # 局结束，清除局内存档
             from achievement import unlock_achievement
+
             unlock_achievement("first_victory")
             EventBus.emit(VICTORY, daoyun=self._victory_daoyun)
             return
@@ -948,15 +985,16 @@ class Game:
             y = start_y
             rect = pygame.Rect(x, y, entrance_w, entrance_h)
             self.route_options.append((level_id, rect, name, reward_type, reward_hint))
-    
+
     def handle_event(self, event):
         # UI 管理器优先处理事件
-        if hasattr(self, 'ui_manager') and self.scene == "combat":
-            if self.ui_manager.handle_event(event):
-                return  # UI 已处理，不再传递
-        
+        if hasattr(self, "ui_manager") and self.scene == "combat" and self.ui_manager.handle_event(event):
+            return  # UI 已处理，不再传递
+
         from ui.input_handler import handle_game_event
+
         handle_game_event(event, self)
+
     def update(self, dt):
         if self.achievement_toast_until > 0:
             self.achievement_toast_until = max(0, self.achievement_toast_until - dt)
@@ -972,11 +1010,11 @@ class Game:
         # 更新战斗统计
         if self.scene == "combat":
             self._update_combat_stats(dt)
-            
+
             # 更新 UI 管理器
-            if hasattr(self, 'ui_manager') and hasattr(self, 'player'):
+            if hasattr(self, "ui_manager") and hasattr(self, "player"):
                 self.ui_manager.update(dt)
-        
+
         CombatSystem.update_combat(dt, self)
 
     def draw(self):
@@ -984,9 +1022,9 @@ class Game:
             VillageScene.draw_village_scene(self.screen, self)
             return
         CombatSystem.draw_combat(self.screen, self)
-        
+
         # 绘制新 UI 系统
-        if hasattr(self, 'ui_manager') and hasattr(self, 'player'):
+        if hasattr(self, "ui_manager") and hasattr(self, "player"):
             self.ui_manager.draw(self.screen)
 
     def set_screen(self, screen):

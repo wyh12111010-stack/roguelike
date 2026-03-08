@@ -2,9 +2,9 @@
 战斗可读性/公平性门槛检查
 用法: python -m tools.fairness_gate
 """
+
 import re
 from pathlib import Path
-
 
 MIN_WINDOW = 0.22
 MIN_BOSS_WINDUP = 0.30

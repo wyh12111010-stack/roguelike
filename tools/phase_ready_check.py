@@ -4,11 +4,11 @@
   python -m tools.phase_ready_check
   python -m tools.phase_ready_check --min-runs 3
 """
+
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-
 
 DEFAULT_HISTORY_DIR = Path("docs/gate-history")
 
@@ -37,7 +37,7 @@ def main():
         print(f"[NOT READY] 审计报告数量不足: {len(reports)}/{args.min_runs}")
         raise SystemExit(1)
 
-    recent = reports[-args.min_runs:]
+    recent = reports[-args.min_runs :]
     failed = [p for p in recent if not _report_passed(p)]
     if failed:
         print("[NOT READY] 最近审计存在不完整报告：")

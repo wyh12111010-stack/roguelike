@@ -1,6 +1,7 @@
 """
 场景基类 - 所有场景实现此接口
 """
+
 from abc import ABC, abstractmethod
 
 

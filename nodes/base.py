@@ -1,22 +1,25 @@
 """
 节点基类 - 所有节点类型实现此接口
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class NodeStatus(Enum):
     """节点执行状态"""
-    CONTINUE = "continue"   # 继续执行
-    COMPLETE = "complete"   # 完成，进入下一节点
-    FAIL = "fail"           # 失败（如身陨）
+
+    CONTINUE = "continue"  # 继续执行
+    COMPLETE = "complete"  # 完成，进入下一节点
+    FAIL = "fail"  # 失败（如身陨）
 
 
 @dataclass
 class NodeContext:
     """节点执行上下文"""
+
     node_index: int
     node_type: str
     node_config: dict

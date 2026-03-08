@@ -10,13 +10,13 @@
   python -m tools.regression_gate --list
   python -m tools.regression_gate --scope level --dry-run
 """
+
 import argparse
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
-import time
-
 
 DEFAULT_LEVELS = [10, 12, 14]
 DEFAULT_RUNS = 5
@@ -82,7 +82,9 @@ def _economy_snapshot_step(output_path: str):
     return ("Economy Snapshot", [sys.executable, "-m", "tools.economy_snapshot", "--write", output_path])
 
 
-def _write_report(path: str, scope: str, args, steps: list, elapsed_map: dict, started_at: datetime, finished_at: datetime):
+def _write_report(
+    path: str, scope: str, args, steps: list, elapsed_map: dict, started_at: datetime, finished_at: datetime
+):
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     lines = []

@@ -1,6 +1,7 @@
 """
 事件常量 - 统一管理事件名，便于发现与扩展
 """
+
 # 战斗
 COMBAT_START = "combat_start"
 PARTICLE_SPAWN = "particle_spawn"

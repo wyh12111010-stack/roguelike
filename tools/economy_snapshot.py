@@ -4,28 +4,28 @@
   python -m tools.economy_snapshot
   python -m tools.economy_snapshot --write docs/ECONOMY_SNAPSHOT.md
 """
+
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 from statistics import mean
 
+from accessory import ACCESSORY_LIST
 from data import load_json
 from setting import (
-    LINGSHI_PER_KILL,
-    LINGSHI_PER_LEVEL,
-    LINGSHI_ELITE_BONUS,
-    SHOP_FABAO_COST,
-    SHOP_REFRESH_COST,
-    SHOP_DAOYUN_FRAGMENT_COST,
-    DAOYUN_ELITE,
     DAOYUN_BOSS,
     DAOYUN_COMBAT_REWARD,
+    DAOYUN_ELITE,
     DAOYUN_VICTORY,
+    LINGSHI_PER_KILL,
+    LINGSHI_PER_LEVEL,
+    SHOP_DAOYUN_FRAGMENT_COST,
+    SHOP_FABAO_COST,
+    SHOP_REFRESH_COST,
 )
-from accessory import ACCESSORY_LIST
 from shop import FABAO_UPGRADE_RULES, UPGRADE_COST
-from unlock import ACCESSORY_SLOT_COSTS, SHOP_REFRESH_COSTS, START_ACCESSORY_COSTS, POTION_CAP_COSTS
+from unlock import ACCESSORY_SLOT_COSTS, POTION_CAP_COSTS, SHOP_REFRESH_COSTS, START_ACCESSORY_COSTS
 
 
 def _chapter_ranges(level_count: int, chunk: int = 5):
@@ -57,17 +57,19 @@ def build_snapshot() -> str:
             enemy_counts.append(n)
             incomes.append(n * LINGSHI_PER_KILL + LINGSHI_PER_LEVEL)
         avg_income = mean(incomes)
-        chapter_stats.append({
-            "chapter": ci,
-            "levels": f"{a}~{b-1}",
-            "avg_enemies": mean(enemy_counts),
-            "avg_income": avg_income,
-            "min_income": min(incomes),
-            "max_income": max(incomes),
-            "fabao_levels": SHOP_FABAO_COST / avg_income,
-            "refresh_levels": SHOP_REFRESH_COST / avg_income,
-            "daoyun_fragment_levels": SHOP_DAOYUN_FRAGMENT_COST / avg_income,
-        })
+        chapter_stats.append(
+            {
+                "chapter": ci,
+                "levels": f"{a}~{b - 1}",
+                "avg_enemies": mean(enemy_counts),
+                "avg_income": avg_income,
+                "min_income": min(incomes),
+                "max_income": max(incomes),
+                "fabao_levels": SHOP_FABAO_COST / avg_income,
+                "refresh_levels": SHOP_REFRESH_COST / avg_income,
+                "daoyun_fragment_levels": SHOP_DAOYUN_FRAGMENT_COST / avg_income,
+            }
+        )
 
     acc_costs = sorted(a.cost for a in ACCESSORY_LIST)
     fb_dmg = FABAO_UPGRADE_RULES["damage_pct"]
@@ -82,7 +84,9 @@ def build_snapshot() -> str:
     lines.append("")
     lines.append("## 章节收入概览（普通战斗关）")
     lines.append("")
-    lines.append("| 章节 | 关卡区间 | 平均敌人数 | 平均每关灵石 | 最低 | 最高 | 买1件法宝约需关数 | 刷新约需关数 | 道韵碎片约需关数 |")
+    lines.append(
+        "| 章节 | 关卡区间 | 平均敌人数 | 平均每关灵石 | 最低 | 最高 | 买1件法宝约需关数 | 刷新约需关数 | 道韵碎片约需关数 |"
+    )
     lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|")
     for s in chapter_stats:
         lines.append(
@@ -98,14 +102,10 @@ def build_snapshot() -> str:
     lines.append(f"- 商店法宝价格：`{SHOP_FABAO_COST}`")
     lines.append(f"- 商店刷新价格：`{SHOP_REFRESH_COST}`")
     lines.append(f"- 道韵碎片价格：`{SHOP_DAOYUN_FRAGMENT_COST}`（每局限购）")
-    lines.append(f"- 饰品价格区间：`{acc_costs[0]} ~ {acc_costs[-1]}`（中位数 `{acc_costs[len(acc_costs)//2]}`）")
+    lines.append(f"- 饰品价格区间：`{acc_costs[0]} ~ {acc_costs[-1]}`（中位数 `{acc_costs[len(acc_costs) // 2]}`）")
     lines.append(f"- 饰品升级费用：`{UPGRADE_COST}`")
-    lines.append(
-        f"- 法宝强化（伤害）每档成本：`{fb_dmg['costs']}`，总投入 `{fb_dmg_total}`，上限 `{fb_dmg['cap']}%`"
-    )
-    lines.append(
-        f"- 法宝强化（攻速）每档成本：`{fb_spd['costs']}`，总投入 `{fb_spd_total}`，上限 `{fb_spd['cap']}%`"
-    )
+    lines.append(f"- 法宝强化（伤害）每档成本：`{fb_dmg['costs']}`，总投入 `{fb_dmg_total}`，上限 `{fb_dmg['cap']}%`")
+    lines.append(f"- 法宝强化（攻速）每档成本：`{fb_spd['costs']}`，总投入 `{fb_spd_total}`，上限 `{fb_spd['cap']}%`")
     lines.append(f"- 饰品槽成长成本（6→9）：`{ACCESSORY_SLOT_COSTS}`")
     lines.append(f"- 商店刷新成长成本（1→3）：`{SHOP_REFRESH_COSTS}`")
     lines.append(f"- 开局饰品成长成本（0→3）：`{START_ACCESSORY_COSTS}`")

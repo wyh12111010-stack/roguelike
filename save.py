@@ -3,10 +3,12 @@
 - 局外 (meta): 道韵、解锁、总场次等，跨局保留
 - 局内 (run): 当前局进度，退出可续玩
 """
+
+import contextlib
 import json
 import os
 from dataclasses import dataclass, field
-from typing import List, Optional, Any
+from typing import Any
 
 from meta import MetaData, meta
 
@@ -28,6 +30,7 @@ def get_run_save_path() -> str:
 
 
 # ---------- 局外存档 ----------
+
 
 def load() -> MetaData:
     """加载局外存档"""
@@ -66,9 +69,11 @@ def persist_meta():
 
 # ---------- 局内存档 ----------
 
+
 @dataclass
 class PlayerSaveData:
     """玩家可序列化状态"""
+
     x: int
     y: int
     health: int
@@ -78,12 +83,12 @@ class PlayerSaveData:
     lingshi: int
     linggen_id: str
     fabao_id: str
-    accessories: List[tuple] = field(default_factory=list)  # [(id, level), ...]
+    accessories: list[tuple] = field(default_factory=list)  # [(id, level), ...]
     fabao_damage_pct: int = 0
     fabao_speed_pct: int = 0
-    fabao_ids: List[str] = field(default_factory=list)  # [主法宝id, 副法宝id]
+    fabao_ids: list[str] = field(default_factory=list)  # [主法宝id, 副法宝id]
     current_fabao_index: int = 0
-    partner_id: Optional[str] = None
+    partner_id: str | None = None
     partner_bond_level: int = 0
     partner_charge: float = 0
 
@@ -91,11 +96,15 @@ class PlayerSaveData:
         acc = getattr(self, "accessories", [])
         acc_ser = [[a[0], a[1]] for a in acc]
         d = {
-            "x": self.x, "y": self.y,
-            "health": self.health, "max_health": self.max_health,
-            "mana": self.mana, "max_mana": self.max_mana,
+            "x": self.x,
+            "y": self.y,
+            "health": self.health,
+            "max_health": self.max_health,
+            "mana": self.mana,
+            "max_mana": self.max_mana,
             "lingshi": self.lingshi,
-            "linggen_id": self.linggen_id, "fabao_id": self.fabao_id,
+            "linggen_id": self.linggen_id,
+            "fabao_id": self.fabao_id,
             "accessories": acc_ser,
             "fabao_damage_pct": getattr(self, "fabao_damage_pct", 0),
             "fabao_speed_pct": getattr(self, "fabao_speed_pct", 0),
@@ -114,11 +123,15 @@ class PlayerSaveData:
         acc_raw = d.get("accessories", [])
         acc = [(a[0], a[1]) if isinstance(a, (list, tuple)) else (a.get("id", ""), a.get("level", 1)) for a in acc_raw]
         return cls(
-            x=d.get("x", 0), y=d.get("y", 0),
-            health=d.get("health", 100), max_health=d.get("max_health", 100),
-            mana=d.get("mana", 100), max_mana=d.get("max_mana", 100),
+            x=d.get("x", 0),
+            y=d.get("y", 0),
+            health=d.get("health", 100),
+            max_health=d.get("max_health", 100),
+            mana=d.get("mana", 100),
+            max_mana=d.get("max_mana", 100),
             lingshi=d.get("lingshi", 0),
-            linggen_id=d.get("linggen_id", "fire"), fabao_id=d.get("fabao_id", "sword"),
+            linggen_id=d.get("linggen_id", "fire"),
+            fabao_id=d.get("fabao_id", "sword"),
             accessories=acc,
             fabao_damage_pct=d.get("fabao_damage_pct", 0),
             fabao_speed_pct=d.get("fabao_speed_pct", 0),
@@ -133,6 +146,7 @@ class PlayerSaveData:
 @dataclass
 class RunSaveData:
     """局内存档：村子 / 战斗（路线选择/商店）"""
+
     version: int = RUN_SAVE_VERSION
     scene: str = "village"  # village | combat
 
@@ -144,19 +158,19 @@ class RunSaveData:
     village_player_y: int = -1
 
     # 战斗状态（仅 scene=combat 时有效）
-    player: Optional[PlayerSaveData] = None
+    player: PlayerSaveData | None = None
     current_level: int = 0
     kill_count: int = 0
     demo_mode: bool = False
     demo_level: int = 0
     in_shop: bool = False
-    route_options: List[Any] = field(default_factory=list)
+    route_options: list[Any] = field(default_factory=list)
     run_potions: int = 0  # 局内丹药数量（从 meta.potion_stock 带入，局结束归入存量）
     # 商店状态（局内）
     shop_daoyun_bought: bool = False
-    shop_fabao_id: Optional[str] = None
+    shop_fabao_id: str | None = None
     shop_refresh_remaining: int = 1
-    shop_shown_fabao_ids: List[str] = field(default_factory=list)
+    shop_shown_fabao_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         d = {
@@ -179,7 +193,7 @@ class RunSaveData:
                 "route_options": self.route_options,
                 "run_potions": getattr(self, "run_potions", 0),
                 "shop_daoyun_bought": getattr(self, "shop_daoyun_bought", False),
-                "shop_fabao_id": getattr(self, "shop_fabao_id"),
+                "shop_fabao_id": self.shop_fabao_id,
                 "shop_refresh_remaining": getattr(self, "shop_refresh_remaining", 1),
                 "shop_shown_fabao_ids": getattr(self, "shop_shown_fabao_ids", []),
             }
@@ -218,7 +232,7 @@ def has_run_save() -> bool:
     return os.path.exists(get_run_save_path())
 
 
-def load_run() -> Optional[RunSaveData]:
+def load_run() -> RunSaveData | None:
     """加载局内存档，失败返回 None"""
     path = get_run_save_path()
     if not os.path.exists(path):
@@ -246,7 +260,5 @@ def clear_run_save():
     """清除局内存档（新游戏 / 通关 / 死亡）"""
     path = get_run_save_path()
     if os.path.exists(path):
-        try:
+        with contextlib.suppress(Exception):
             os.remove(path)
-        except Exception:
-            pass

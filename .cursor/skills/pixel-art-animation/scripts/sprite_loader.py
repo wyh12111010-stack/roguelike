@@ -2,7 +2,9 @@
 pygame 精灵表/序列帧加载工具。
 用于将程序化或 Rika AI 导出的动画帧接入游戏。
 """
+
 import os
+
 import pygame
 
 
@@ -26,7 +28,7 @@ def load_sequence(directory: str, frame_count: int, prefix: str = "frame") -> li
     return frames
 
 
-def load_sprite_sheet(path: str, frame_w: int, frame_h: int = None, frame_count: int = None) -> list:
+def load_sprite_sheet(path: str, frame_w: int, frame_h: int | None = None, frame_count: int | None = None) -> list:
     """
     加载横向排列的精灵表。
     frame_count 不指定时，按宽度自动计算。

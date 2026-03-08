@@ -2,16 +2,19 @@
 粒子系统 - 元素效果表现（蒸发、感电、超载等）
 通过 EventBus 订阅 PARTICLE_SPAWN 事件生成
 """
+
 import math
 import random
+
 import pygame
 
-from core.events import PARTICLE_SPAWN
 from core import EventBus
+from core.events import PARTICLE_SPAWN
 
 
 class Particle:
     """单粒子：位置、速度、颜色、生命周期"""
+
     def __init__(self, x, y, vx, vy, color, lifetime=0.4, size=4, shrink=True):
         self.x = x
         self.y = y
@@ -103,11 +106,11 @@ EFFECT_SPAWNERS = {
     "fire": lambda x, y: _spawn_burst(x, y, (255, 120, 50), 6, 70),
     "earth": lambda x, y: _spawn_burst(x, y, (160, 120, 80), 5, 45),
     # 五行相克反应（强化：更多粒子、更快速度、更长生命）
-    "jin_mu": lambda x, y: _spawn_burst(x, y, (200, 180, 120), 15, 180, 0.8),   # 金克木：斩木
-    "mu_tu": lambda x, y: _spawn_burst(x, y, (80, 160, 80), 20, 200, 0.7),      # 木克土：破土
-    "tu_shui": lambda x, y: _spawn_burst(x, y, (160, 120, 80), 12, 150, 1.0),   # 土克水：堵水
-    "shui_huo": lambda x, y: _spawn_rising(x, y, (80, 150, 255), 18, 160, 0.9), # 水克火：灭火
-    "huo_jin": lambda x, y: _spawn_burst(x, y, (255, 100, 50), 16, 140, 1.2),   # 火克金：熔金
+    "jin_mu": lambda x, y: _spawn_burst(x, y, (200, 180, 120), 15, 180, 0.8),  # 金克木：斩木
+    "mu_tu": lambda x, y: _spawn_burst(x, y, (80, 160, 80), 20, 200, 0.7),  # 木克土：破土
+    "tu_shui": lambda x, y: _spawn_burst(x, y, (160, 120, 80), 12, 150, 1.0),  # 土克水：堵水
+    "shui_huo": lambda x, y: _spawn_rising(x, y, (80, 150, 255), 18, 160, 0.9),  # 水克火：灭火
+    "huo_jin": lambda x, y: _spawn_burst(x, y, (255, 100, 50), 16, 140, 1.2),  # 火克金：熔金
     "hit": lambda x, y: _spawn_burst(x, y, (255, 100, 100), 4, 40),
     # Boss 全局技能读招/落地
     "boss_warn": lambda x, y: _spawn_rising(x, y, (255, 220, 130), 7, 70, 0.38),
@@ -129,6 +132,7 @@ EFFECT_SPAWNERS = {
 
 class ParticleManager:
     """管理粒子列表，订阅 PARTICLE_SPAWN"""
+
     def __init__(self):
         self.particles = []
         EventBus.on(PARTICLE_SPAWN, self._on_spawn)

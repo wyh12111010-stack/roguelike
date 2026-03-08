@@ -60,8 +60,7 @@ RESERVE_SPECIAL = [
 
 # 汇总：按 id 可查
 RESERVE_ALL = {
-    e["id"]: e for lst in [
-        RESERVE_DAMAGE, RESERVE_CONTROL, RESERVE_DEBUFF,
-        RESERVE_SELF_BUFF, RESERVE_SPECIAL
-    ] for e in lst
+    e["id"]: e
+    for lst in [RESERVE_DAMAGE, RESERVE_CONTROL, RESERVE_DEBUFF, RESERVE_SELF_BUFF, RESERVE_SPECIAL]
+    for e in lst
 }

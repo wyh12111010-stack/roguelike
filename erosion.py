@@ -153,7 +153,3 @@ def get_calamity_daoyun_bonus(active_seals: list) -> float:
         if seal:
             bonus += seal["daoyun_bonus"]
     return bonus
-
-
-
-

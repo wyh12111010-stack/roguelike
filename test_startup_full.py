@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """游戏启动测试 - 检查所有模块"""
-import sys
+
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 print("=" * 60)
@@ -14,6 +16,7 @@ errors = []
 try:
     print("[1/10] 导入 pygame...")
     import pygame
+
     pygame.init()
     print("  [OK] pygame 版本:", pygame.version.ver)
 except Exception as e:
@@ -22,9 +25,11 @@ except Exception as e:
 
 try:
     print("[2/10] 导入 config...")
-    from config import (FPS, SCREEN_WIDTH, SCREEN_HEIGHT, 
-                       get_font_title, get_font_heading, get_font_body, get_font_small,
-                       COLOR_TEXT_TITLE, COLOR_TEXT_HEADING, draw_element_icon)
+    from config import (
+        SCREEN_HEIGHT,
+        SCREEN_WIDTH,
+    )
+
     print("  [OK] config - 新字体函数已加载")
 except Exception as e:
     errors.append(f"config: {e}")
@@ -32,7 +37,8 @@ except Exception as e:
 
 try:
     print("[3/10] 导入 attribute...")
-    from attribute import Attr, ATTR_COLORS
+    from attribute import ATTR_COLORS, Attr
+
     print("  [OK] attribute - 元素颜色:", ATTR_COLORS[Attr.FIRE])
 except Exception as e:
     errors.append(f"attribute: {e}")
@@ -40,7 +46,6 @@ except Exception as e:
 
 try:
     print("[4/10] 导入 player...")
-    from player import Player
     print("  [OK] player")
 except Exception as e:
     errors.append(f"player: {e}")
@@ -48,7 +53,6 @@ except Exception as e:
 
 try:
     print("[5/10] 导入 enemy...")
-    from enemy import Enemy
     print("  [OK] enemy")
 except Exception as e:
     errors.append(f"enemy: {e}")
@@ -56,7 +60,6 @@ except Exception as e:
 
 try:
     print("[6/10] 导入 village...")
-    from village import draw_village
     print("  [OK] village")
 except Exception as e:
     errors.append(f"village: {e}")
@@ -65,6 +68,7 @@ except Exception as e:
 try:
     print("[7/10] 导入 game...")
     from game import Game
+
     print("  [OK] game")
 except Exception as e:
     errors.append(f"game: {e}")

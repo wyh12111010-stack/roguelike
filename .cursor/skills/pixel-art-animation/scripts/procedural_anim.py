@@ -4,6 +4,7 @@
 适用于待机、轻微浮动等低帧率场景。
 用法: python procedural_anim.py input.png -o output_dir --mode bob --frames 4
 """
+
 import argparse
 import os
 import sys

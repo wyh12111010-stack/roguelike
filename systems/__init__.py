@@ -1,5 +1,6 @@
 """系统层"""
-from .route import RouteSystem
-from .combat import CombatSystem
 
-__all__ = ["RouteSystem", "CombatSystem"]
+from .combat import CombatSystem
+from .route import RouteSystem
+
+__all__ = ["CombatSystem", "RouteSystem"]

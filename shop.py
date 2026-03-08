@@ -2,13 +2,15 @@
 商店 - 局内消费灵石
 法宝、道韵碎片、刷新、法宝强化、饰品、饰品升级
 """
-import pygame
+
 import random
 
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_UI, get_font
-from accessory import ACCESSORY_LIST, get_accessory
+import pygame
+
+from accessory import get_accessory
+from config import SCREEN_HEIGHT, SCREEN_WIDTH, get_font
 from fabao import FABAO_LIST
-from setting import SHOP_FABAO_COST, SHOP_DAOYUN_FRAGMENT_COST, SHOP_REFRESH_COST
+from setting import SHOP_DAOYUN_FRAGMENT_COST, SHOP_FABAO_COST, SHOP_REFRESH_COST
 
 # 法宝强化（增强法宝，非饰品）
 # 采用分段成本 + 上限封顶，避免无限滚雪球。
@@ -19,15 +21,24 @@ FABAO_UPGRADE_RULES = {
 
 # 每局商店展示的饰品（可随机，此处固定前几个）
 SHOP_ACCESSORY_IDS = [
-    "dmg_s", "dmg_pct", "atk_spd", "pierce", "multi", "hp", "mp",
-    "glass_core", "swift_debt", "mana_burn", "iron_shell",
+    "dmg_s",
+    "dmg_pct",
+    "atk_spd",
+    "pierce",
+    "multi",
+    "hp",
+    "mp",
+    "glass_core",
+    "swift_debt",
+    "mana_burn",
+    "iron_shell",
 ]
 
 # 饰品升级费用（按等级）
 UPGRADE_COST = {1: 15, 2: 25}  # 1->2: 15, 2->3: 25
 
 SHOP_UI = {
-    "item_rects": [],   # [(rect, item_type, item_id, cost), ...]
+    "item_rects": [],  # [(rect, item_type, item_id, cost), ...]
     "exit_rect": None,
     "refresh_rect": None,
 }
@@ -110,10 +121,12 @@ def draw(screen, player, lingshi, shop_state=None, unlocked_accessories=None, ac
         if offer is not None:
             SHOP_UI["item_rects"].append((rect, "fabao", ("fb_upgrade", etype, offer["step"]), offer["cost"]))
             _draw_item(
-                screen, rect,
+                screen,
+                rect,
                 f"{rule['label']} {offer['cost']}",
                 f"+{offer['step']}% ({offer['next']}%/{rule['cap']}%)",
-                can, font_small
+                can,
+                font_small,
             )
         else:
             _draw_item(screen, rect, f"{rule['label']} 已满", f"上限 {rule['cap']}%", False, font_small)
@@ -124,7 +137,9 @@ def draw(screen, player, lingshi, shop_state=None, unlocked_accessories=None, ac
     # 2. 饰品（仅显示已解锁的）
     sect = font_small.render("饰品", True, (180, 160, 120))
     screen.blit(sect, (start_x, cy - 22))
-    acc_ids = [a for a in SHOP_ACCESSORY_IDS if a in unlocked_accessories] if unlocked_accessories else SHOP_ACCESSORY_IDS
+    acc_ids = (
+        [a for a in SHOP_ACCESSORY_IDS if a in unlocked_accessories] if unlocked_accessories else SHOP_ACCESSORY_IDS
+    )
     for aid in acc_ids:
         acc = get_accessory(aid)
         if not acc:
@@ -150,7 +165,7 @@ def draw(screen, player, lingshi, shop_state=None, unlocked_accessories=None, ac
         rect = pygame.Rect(start_x, cy, item_w, item_h)
         can = lingshi >= cost
         SHOP_UI["item_rects"].append((rect, "upgrade", i, cost))
-        _draw_item(screen, rect, f"{acc.name}+{lv} {cost}", f"Lv{lv}->{lv+1}", can, font_small)
+        _draw_item(screen, rect, f"{acc.name}+{lv} {cost}", f"Lv{lv}->{lv + 1}", can, font_small)
         start_x += item_w + gap
         if start_x > SCREEN_WIDTH - 150:
             start_x = 40
@@ -189,7 +204,4 @@ def get_fabao_upgrade_offer(player, etype):
 
 
 def _has_accessory(player, aid):
-    for acc, _ in player.accessories:
-        if acc.id == aid:
-            return True
-    return False
+    return any(acc.id == aid for acc, _ in player.accessories)

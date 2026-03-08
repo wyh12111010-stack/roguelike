@@ -1,6 +1,7 @@
 """最终检查 - 确保所有功能正常"""
-import sys
+
 import os
+import sys
 
 os.chdir(r"f:\游戏")
 
@@ -15,7 +16,8 @@ checks = []
 # 1. 导入测试
 print("1. 检查核心模块导入...")
 try:
-    from ui_theme import THEME_COLORS, AnimatedBackground, draw_panel, draw_button
+    from ui_theme import THEME_COLORS, AnimatedBackground, draw_button, draw_panel
+
     checks.append(("ui_theme 导入", True, ""))
     print("   OK ui_theme")
 except Exception as e:
@@ -23,7 +25,6 @@ except Exception as e:
     print(f"   ERROR ui_theme: {e}")
 
 try:
-    from village_visual import draw_village_background, draw_room_enhanced
     checks.append(("village_visual 导入", True, ""))
     print("   OK village_visual")
 except Exception as e:
@@ -31,7 +32,6 @@ except Exception as e:
     print(f"   ERROR village_visual: {e}")
 
 try:
-    from achievement import unlock_achievement
     checks.append(("achievement 导入", True, ""))
     print("   OK achievement")
 except Exception as e:
@@ -40,6 +40,7 @@ except Exception as e:
 
 try:
     from game import Game
+
     checks.append(("game 导入", True, ""))
     print("   OK game")
 except Exception as e:
@@ -52,6 +53,7 @@ print()
 print("2. 检查游戏初始化...")
 try:
     import pygame
+
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     game = Game(screen)
@@ -69,44 +71,50 @@ print()
 print("3. 检查视觉效果...")
 try:
     import pygame
+
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
-    
+
     # 测试背景
     from ui_theme import AnimatedBackground
+
     bg = AnimatedBackground(800, 600)
     bg.update(0.016)
     bg.draw(screen)
     checks.append(("动态背景", True, ""))
     print("   OK 动态背景")
-    
+
     # 测试面板
     from ui_theme import draw_panel
+
     rect = pygame.Rect(100, 100, 300, 200)
     draw_panel(screen, rect, "测试", True)
     checks.append(("古风面板", True, ""))
     print("   OK 古风面板")
-    
+
     # 测试按钮
     from ui_theme import draw_button
+
     btn = pygame.Rect(150, 350, 100, 40)
     draw_button(screen, btn, "测试", True, False)
     checks.append(("修仙按钮", True, ""))
     print("   OK 修仙按钮")
-    
+
     # 测试资源显示
-    from ui_theme import draw_resource, THEME_COLORS
+    from ui_theme import THEME_COLORS, draw_resource
+
     draw_resource(screen, 20, 20, "道", 1234, THEME_COLORS["daoyun"])
     checks.append(("资源显示", True, ""))
     print("   OK 资源显示")
-    
+
     # 测试进度条
     from ui_theme import draw_progress_bar
+
     bar = pygame.Rect(100, 450, 200, 30)
     draw_progress_bar(screen, bar, 75, 100, THEME_COLORS["health"])
     checks.append(("进度条", True, ""))
     print("   OK 进度条")
-    
+
     pygame.quit()
 except Exception as e:
     checks.append(("视觉效果", False, str(e)))

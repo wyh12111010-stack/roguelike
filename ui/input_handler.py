@@ -1,13 +1,14 @@
 """输入处理：村子/战斗场景的键盘与鼠标事件"""
+
 import pygame
 
+from controls import action_down
 from core.events import SHOP_ENTER
 from levels import get_node_type
 from meta import meta
-from save import persist_meta, clear_run_save
+from save import clear_run_save, persist_meta
 from setting import POTION_HEAL_PCT
 from village import VILLAGE_UI
-from controls import action_down
 
 
 def handle_game_event(event, game):
@@ -38,19 +39,16 @@ def handle_game_event(event, game):
         return
 
     # 开局饰品二选一/三选一
-    if getattr(game, "start_accessory_pending", False):
-        if _handle_start_accessory_event(event, game):
-            return
+    if getattr(game, "start_accessory_pending", False) and _handle_start_accessory_event(event, game):
+        return
 
     # 事件选择
-    if getattr(game, "event_pending", False):
-        if _handle_event_pending(event, game):
-            return
+    if getattr(game, "event_pending", False) and _handle_event_pending(event, game):
+        return
 
     # 法宝奖励选择
-    if getattr(game, "fabao_reward_pending", False):
-        if _handle_fabao_reward_event(event, game):
-            return
+    if getattr(game, "fabao_reward_pending", False) and _handle_fabao_reward_event(event, game):
+        return
 
     # 路线选择时，按 1/2/3/4 快速选择
     if game.route_options and not game.in_shop and not getattr(game, "fabao_reward_pending", False):
@@ -58,9 +56,8 @@ def handle_game_event(event, game):
             return
 
     # 商店内
-    if game.in_shop:
-        if _handle_shop_event(event, game):
-            return
+    if game.in_shop and _handle_shop_event(event, game):
+        return
     if getattr(game, "char_panel_open", False) and event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
         game.char_panel_open = False
         return
@@ -76,34 +73,36 @@ def _handle_village_event(event, game):
     if game.resonance_panel_open:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # 确认按钮
-            if VILLAGE_UI.get("resonance_confirm_rect") and VILLAGE_UI["resonance_confirm_rect"].collidepoint(event.pos):
+            if VILLAGE_UI.get("resonance_confirm_rect") and VILLAGE_UI["resonance_confirm_rect"].collidepoint(
+                event.pos
+            ):
                 game.resonance_panel_open = False
                 return
-            
+
             # 取消按钮
             if VILLAGE_UI.get("resonance_cancel_rect") and VILLAGE_UI["resonance_cancel_rect"].collidepoint(event.pos):
                 game.resonance_panel_open = False
                 return
-            
+
             # 共鸣选项
             for rect, pact in VILLAGE_UI.get("resonance_panel_rects", []):
                 if rect.collidepoint(event.pos):
                     game.resonance_system.add_pact(pact)
                     return
-        
+
         # ESC 键关闭面板
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             game.resonance_panel_open = False
             return
-        
+
         return  # 面板打开时不处理其他点击
-    
+
     # 共鸣设置按钮
     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
         if VILLAGE_UI.get("resonance_button_rect") and VILLAGE_UI["resonance_button_rect"].collidepoint(event.pos):
             game.resonance_panel_open = True
             return
-    
+
     if game.village_dialogue:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             game.village_dialogue = None
@@ -129,6 +128,7 @@ def _handle_village_event(event, game):
             else:
                 # 检查特殊对话
                 from partner import get_resonance_dialogue
+
                 resonance_intensity = game.resonance_system.get_total_intensity()
                 special_dialogue = get_resonance_dialogue(partner_id, resonance_intensity)
                 if special_dialogue:
@@ -188,6 +188,7 @@ def _apply_growth(game, gtype, cost):
 
 def _apply_unlock(game, item_id, item_type, cost):
     from achievement import unlock_achievement
+
     if item_type == "linggen" and item_id not in meta.unlocked_linggen:
         meta.daoyun -= cost
         meta.unlocked_linggen.append(item_id)
@@ -242,7 +243,11 @@ def _handle_event_pending(event, game):
 
 
 def _handle_fabao_reward_event(event, game):
-    if event.type == pygame.KEYDOWN and pygame.K_1 <= event.key <= pygame.K_3 and getattr(game, "fabao_reward_replace_step", 0) == 0:
+    if (
+        event.type == pygame.KEYDOWN
+        and pygame.K_1 <= event.key <= pygame.K_3
+        and getattr(game, "fabao_reward_replace_step", 0) == 0
+    ):
         idx = event.key - pygame.K_1
         opts = getattr(game, "fabao_reward_options", [])
         if idx < len(opts):
@@ -302,6 +307,7 @@ def _handle_route_key_event(event, game):
     if nt == "shop":
         game.in_shop = True
         from core import EventBus
+
         EventBus.emit(SHOP_ENTER)
         game.current_level = level_id
         game.route_options = [o for o in game.route_options if get_node_type(o[0]) != "shop"]
@@ -335,6 +341,7 @@ def _handle_route_key_event(event, game):
 def _handle_shop_event(event, game):
     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
         from shop import SHOP_UI
+
         mx, my = event.pos
         for item in SHOP_UI.get("item_rects", []):
             rect, itype, iid, cost = item[0], item[1], item[2], item[3]
@@ -352,26 +359,73 @@ def _handle_shop_event(event, game):
 
 def _handle_combat_keys(event, game):
     bindings = getattr(meta, "keybinds", {})
-    if action_down(event, bindings, "switch_fabao") and game.scene == "combat" and not game.game_over and not game.victory and not game.in_shop and game.player:
+    if (
+        action_down(event, bindings, "switch_fabao")
+        and game.scene == "combat"
+        and not game.game_over
+        and not game.victory
+        and not game.in_shop
+        and game.player
+    ):
         game.player.switch_fabao()
-    elif action_down(event, bindings, "cast_spell") and game.scene == "combat" and not game.game_over and not game.victory and not game.in_shop and game.player and game.player.can_cast_spell():
+    elif (
+        action_down(event, bindings, "cast_spell")
+        and game.scene == "combat"
+        and not game.game_over
+        and not game.victory
+        and not game.in_shop
+        and game.player
+        and game.player.can_cast_spell()
+    ):
         ctx = {"projectiles": game.projectiles, "spell_zones": game.spell_zones, "earth_walls": game.earth_walls}
         game.player.cast_spell(ctx)
-    elif action_down(event, bindings, "dash") and game.scene == "combat" and not game.game_over and not game.victory and not game.in_shop and game.player:
-        from config import ARENA_X, ARENA_Y, ARENA_W, ARENA_H
+    elif (
+        action_down(event, bindings, "dash")
+        and game.scene == "combat"
+        and not game.game_over
+        and not game.victory
+        and not game.in_shop
+        and game.player
+    ):
+        from config import ARENA_H, ARENA_W, ARENA_X, ARENA_Y
+
         arena = pygame.Rect(ARENA_X, ARENA_Y, ARENA_W, ARENA_H)
         game.player._keybinds = bindings
         game.player.try_dash(arena)
-    elif action_down(event, bindings, "partner_skill") and game.scene == "combat" and not game.game_over and not game.victory and not game.in_shop and game.player:
+    elif (
+        action_down(event, bindings, "partner_skill")
+        and game.scene == "combat"
+        and not game.game_over
+        and not game.victory
+        and not game.in_shop
+        and game.player
+    ):
         from partner_skills import can_cast_partner_skill, cast_partner_skill
+
         if can_cast_partner_skill(game.player):
-            ctx = {"projectiles": game.projectiles, "spell_zones": game.spell_zones, "earth_walls": game.earth_walls, "enemies": game.enemies}
+            ctx = {
+                "projectiles": game.projectiles,
+                "spell_zones": game.spell_zones,
+                "earth_walls": game.earth_walls,
+                "enemies": game.enemies,
+            }
             cast_partner_skill(game.player, ctx)
-    elif action_down(event, bindings, "use_potion") and game.scene == "combat" and not game.game_over and not game.victory and not game.in_shop:
+    elif (
+        action_down(event, bindings, "use_potion")
+        and game.scene == "combat"
+        and not game.game_over
+        and not game.victory
+        and not game.in_shop
+    ):
         run_p = getattr(game, "run_potions", 0)
         if run_p > 0 and game.player and game.player.health < game.player.max_health:
             game.run_potions -= 1
             heal = max(1, game.player.max_health * POTION_HEAL_PCT // 100)
             game.player.health = min(game.player.max_health, game.player.health + heal)
-    elif action_down(event, bindings, "char_panel") and game.scene == "combat" and not game.game_over and not game.victory:
+    elif (
+        action_down(event, bindings, "char_panel")
+        and game.scene == "combat"
+        and not game.game_over
+        and not game.victory
+    ):
         game.char_panel_open = not game.char_panel_open

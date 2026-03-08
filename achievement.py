@@ -62,7 +62,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("final_boss_defeated", False),
     },
-    
     # === 战斗类成就 ===
     {
         "id": "speed_master",
@@ -127,7 +126,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("total_damage", 0) >= 10000,
     },
-    
     # === 挑战类成就 ===
     {
         "id": "no_damage_boss",
@@ -178,7 +176,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("potions_used", 0) == 0 and stats.get("victory", False),
     },
-    
     # === 收集类成就 ===
     {
         "id": "unlock_all_linggen",
@@ -215,7 +212,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("partners_healed", 0) >= 5,
     },
-    
     # === 流派类成就 ===
     {
         "id": "fire_master",
@@ -273,7 +269,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("victory", False) and stats.get("ranged_only", False),
     },
-    
     # === 元素反应类成就 ===
     {
         "id": "reaction_master",
@@ -303,7 +298,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("overload_count", 0) >= 20,
     },
-    
     # === 经济类成就 ===
     {
         "id": "rich_cultivator",
@@ -326,7 +320,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("shop_purchases", 0) >= 10,
     },
-    
     # === 隐藏成就 ===
     {
         "id": "lucky_one",
@@ -349,7 +342,6 @@ ACHIEVEMENT_LIST = [
         "unlock": None,
         "check": lambda stats: stats.get("victory", False) and stats.get("final_health", 100) < 50,
     },
-    
     # === 秽源共鸣成就 ===
     {
         "id": "resonance_5",
@@ -399,11 +391,18 @@ ACHIEVEMENT_LIST = [
         "desc": "激活所有极度等级通关",
         "unlock": None,
         "check": lambda stats: (
-            stats.get("victory", False) and
-            all(pact in stats.get("active_pacts", []) for pact in [
-                "fury_extreme", "tenacity_extreme", "swift_extreme",
-                "swarm_extreme", "chaos_extreme", "barren_extreme"
-            ])
+            stats.get("victory", False)
+            and all(
+                pact in stats.get("active_pacts", [])
+                for pact in [
+                    "fury_extreme",
+                    "tenacity_extreme",
+                    "swift_extreme",
+                    "swarm_extreme",
+                    "chaos_extreme",
+                    "barren_extreme",
+                ]
+            )
         ),
     },
 ]
@@ -412,11 +411,11 @@ ACHIEVEMENT_LIST = [
 def check_achievements(stats: dict, completed: set) -> list:
     """
     检查成就完成情况
-    
+
     Args:
         stats: 局内统计数据
         completed: 已完成的成就 ID 集合
-    
+
     Returns:
         新完成的成就 ID 列表
     """
@@ -443,19 +442,19 @@ def get_all_achievements() -> list:
 def unlock_achievement(achievement_id: str):
     """
     解锁成就（添加到 meta.achievements）
-    
+
     Args:
         achievement_id: 成就 ID
     """
-    from meta import meta
-    from save import persist_meta
     from core import EventBus
     from core.events import ACHIEVEMENT_UNLOCKED
-    
+    from meta import meta
+    from save import persist_meta
+
     if achievement_id not in meta.achievements:
         meta.achievements.add(achievement_id)
         persist_meta()
-        
+
         # 触发成就解锁事件
         ach = get_achievement(achievement_id)
         if ach:

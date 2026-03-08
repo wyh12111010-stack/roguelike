@@ -2,9 +2,10 @@
 解锁配置 - 道韵消耗（五行）
 治疗伙伴后「允许」解锁对应法宝/饰品，真正解锁仍用道韵购买
 """
-from linggen import LINGGEN_LIST
-from fabao import FABAO_LIST
+
 from accessory import ACCESSORY_LIST
+from fabao import FABAO_LIST
+from linggen import LINGGEN_LIST
 
 # 解锁灵根所需道韵（全部免费，灵根是玩法选择不是解锁内容）
 LINGGEN_COST = {
@@ -18,13 +19,13 @@ LINGGEN_COST = {
 
 # 解锁法宝所需道韵（伙伴解锁的免费，成就解锁的需要道韵）
 FABAO_COST = {
-    "sword": 0,     # 初始
-    "spell": 0,     # 伙伴解锁（玄霄）
-    "staff": 0,     # 伙伴解锁（青璃）
-    "blade": 0,     # 伙伴解锁（赤渊）
-    "stone": 0,     # 伙伴解锁（碧落）
+    "sword": 0,  # 初始
+    "spell": 0,  # 伙伴解锁（玄霄）
+    "staff": 0,  # 伙伴解锁（青璃）
+    "blade": 0,  # 伙伴解锁（赤渊）
+    "stone": 0,  # 伙伴解锁（碧落）
     "cauldron": 0,  # 伙伴解锁（墨羽）
-    "needle": 60,   # 成就解锁（速度大师）
+    "needle": 60,  # 成就解锁（速度大师）
 }
 
 # 局外成长道韵（逐步递增）
@@ -63,6 +64,7 @@ def get_growth_cost(growth_type: str, current_value: int) -> int:
         return GROWTH_BASE_COST + tier * GROWTH_INCREMENT
     return 99
 
+
 # 饰品解锁道韵（局外，铸心处）
 ACCESSORY_UNLOCK_COST = {
     # 基础（15-25）
@@ -71,23 +73,19 @@ ACCESSORY_UNLOCK_COST = {
     "evap_splash": 20,
     "elec_chain": 25,
     "melt_heal": 18,
-    
     # 伙伴解锁（免费）
     "dmg_pct": 0,
     "atk_spd": 0,
     "mana_burn": 0,
     "hp": 0,
     "iron_shell": 0,
-    
     # 进阶（40-50）
     "pierce": 40,
     "multi": 50,
-    
     # 五行流派饰品（45-48，侵蚀度 2 后可见）
-    "resonance_core": 45,      # 相合流派
-    "reaction_master": 48,     # 相克流派
-    "element_harmony": 45,     # 通用流派
-    
+    "resonance_core": 45,  # 相合流派
+    "reaction_master": 48,  # 相克流派
+    "element_harmony": 45,  # 通用流派
     # 风险收益（60-70）
     "glass_core": 60,
     "swift_debt": 60,
@@ -113,45 +111,52 @@ def get_lockable_linggen(unlocked):
 def get_lockable_fabao(unlocked, partner_bond_levels=None, achievements=None):
     """可解锁法宝：未解锁 且 满足条件"""
     from partner import PARTNER_UNLOCKS_FABAO
+
     bond = partner_bond_levels or {}
     achievements = achievements or set()
     allowed = set()
-    
+
     # 1. 初始法宝
     allowed.add("sword")
-    
+
     # 2. 伙伴解锁（治疗后可见）
     for pid, fid in PARTNER_UNLOCKS_FABAO.items():
         if fid and bond.get(pid, 0) >= 1:
             allowed.add(fid)
-    
+
     # 3. 成就解锁（完成成就后可见）
     if "speed_master" in achievements:
         allowed.add("needle")
-    
+
     return [fb for fb in FABAO_LIST if fb.id not in unlocked and fb.id in allowed]
 
 
 # 无需伙伴即可解锁的饰品（默认开放）
 ACCESSORY_DEFAULT_ALLOWED = {
-    "dmg_s", "mp", "evap_splash", "elec_chain", "melt_heal",
-    "glass_core", "swift_debt",
+    "dmg_s",
+    "mp",
+    "evap_splash",
+    "elec_chain",
+    "melt_heal",
+    "glass_core",
+    "swift_debt",
 }
 
 
 def get_lockable_accessories(unlocked_ids, partner_bond_levels=None, erosion_level=0):
     """可解锁饰品：未解锁 且 满足条件"""
     from partner import PARTNER_UNLOCKS_ACCESSORY
+
     bond = partner_bond_levels or {}
     allowed = set(ACCESSORY_DEFAULT_ALLOWED)
-    
+
     # 伙伴解锁
     for pid, aid in PARTNER_UNLOCKS_ACCESSORY.items():
         if aid and bond.get(pid, 0) >= 1:
             allowed.add(aid)
-    
+
     # 侵蚀度解锁（五行流派饰品，只有 3 个）
     if erosion_level >= 2:
         allowed.update(["resonance_core", "reaction_master", "element_harmony"])
-    
+
     return [a for a in ACCESSORY_LIST if a.id not in unlocked_ids and a.id in allowed]

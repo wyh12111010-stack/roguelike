@@ -1,16 +1,40 @@
 """战斗系统：战斗更新与绘制逻辑"""
+
 import pygame
 
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, ARENA_X, ARENA_Y, ARENA_W, ARENA_H, get_font
-from config import COLOR_UI, COLOR_ARENA, COLOR_ARENA_BORDER, COLOR_ENTRANCE, COLOR_ENTRANCE_HOVER
-from config import COLOR_HUD_HP, COLOR_HUD_HP_BG, COLOR_HUD_MP, COLOR_HUD_MP_BG, COLOR_HUD_BORDER
+from config import (
+    ARENA_H,
+    ARENA_W,
+    ARENA_X,
+    ARENA_Y,
+    COLOR_ARENA,
+    COLOR_ARENA_BORDER,
+    COLOR_ENTRANCE,
+    COLOR_ENTRANCE_HOVER,
+    COLOR_HUD_BORDER,
+    COLOR_HUD_HP,
+    COLOR_HUD_HP_BG,
+    COLOR_HUD_MP,
+    COLOR_HUD_MP_BG,
+    COLOR_UI,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    get_font,
+)
 from core import EventBus
 from core.events import ENEMY_KILLED, LEVEL_CLEAR, NODE_COMPLETE, PLAYER_DEATH, SHOP_ENTER
-from levels import get_node_type, get_level_display, get_node_reward, get_node_reward_type, DEMO_NAMES
+from levels import DEMO_NAMES, get_level_display, get_node_reward, get_node_type
 from meta import meta
-from save import persist_meta, clear_run_save
+from save import clear_run_save, persist_meta
+from setting import (
+    DAOYUN_BOSS,
+    DAOYUN_COMBAT_REWARD,
+    DAOYUN_ELITE,
+    LINGSHI_ELITE_BONUS,
+    LINGSHI_PER_KILL,
+    LINGSHI_PER_LEVEL,
+)
 from story import get_ending
-from setting import DAOYUN_ELITE, DAOYUN_BOSS, DAOYUN_VICTORY, DAOYUN_COMBAT_REWARD, LINGSHI_PER_KILL, LINGSHI_PER_LEVEL, LINGSHI_ELITE_BONUS
 
 
 class CombatSystem:
@@ -19,42 +43,47 @@ class CombatSystem:
     @staticmethod
     def _trigger_kill_effects(player, enemy):
         """触发击杀时的饰品特殊效果"""
-        from accessory_effects import (
-            trigger_swarm_minor,
-            trigger_life_drain,
-            trigger_mana_leech,
-            trigger_swarm_extreme
-        )
-        
+        from accessory_effects import trigger_life_drain, trigger_mana_leech, trigger_swarm_extreme, trigger_swarm_minor
+
         # 增殖碎片：30%概率额外掉落灵石
         trigger_swarm_minor(player)
-        
+
         # 生命汲取：击杀回复5%生命
         trigger_life_drain(player)
-        
+
         # 灵力吸取：击杀回复10灵力
         trigger_mana_leech(player)
-        
+
         # 增殖之种：击杀敌人时在原地生成毒雾
-        game = getattr(player, '_game_ref', None)
+        game = getattr(player, "_game_ref", None)
         if game:
             trigger_swarm_extreme(player, enemy, game)
 
     @staticmethod
     def update_combat(dt, game):
         """战斗场景更新逻辑（从 game.update 提取，scene==combat 分支）"""
+        # 帧冻结检查：冻结期间只更新视觉效果，跳过游戏逻辑
+        if hasattr(game, "hitstop") and game.hitstop.update(dt):
+            if game.particle_mgr:
+                game.particle_mgr.update(dt)
+            if hasattr(game, "damage_text_mgr"):
+                game.damage_text_mgr.update(dt)
+            if hasattr(game, "screen_shake"):
+                game.screen_shake.update(dt)
+            return
+
         game.combat_log.update(dt)
         if game.particle_mgr:
             game.particle_mgr.update(dt)
-        
+
         # 更新伤害飘字
-        if hasattr(game, 'damage_text_mgr'):
+        if hasattr(game, "damage_text_mgr"):
             game.damage_text_mgr.update(dt)
-        
+
         # 更新屏幕震动
-        if hasattr(game, 'screen_shake'):
+        if hasattr(game, "screen_shake"):
             game.screen_shake.update(dt)
-        
+
         if game.game_over or game.victory:
             return
 
@@ -132,18 +161,20 @@ class CombatSystem:
                 game.kill_count += 1
                 meta.total_kills += 1
                 game.player.lingshi += LINGSHI_PER_KILL
-                
+
                 # 调用游戏统计更新
                 game._on_enemy_killed(e)
-                
+
                 # 触发击杀特殊效果
                 CombatSystem._trigger_kill_effects(game.player, e)
-                
+
                 from achievement import unlock_achievement
+
                 for aid, thresh in [("kill_10", 10), ("kill_30", 30), ("kill_100", 100)]:
                     if meta.total_kills >= thresh:
                         unlock_achievement(aid)
                 from partner_skills import add_partner_charge
+
                 add_partner_charge(game.player, 10)
 
         # 更新敌人投射物
@@ -232,16 +263,20 @@ class CombatSystem:
                 lingshi_gain = LINGSHI_PER_LEVEL
                 game.player.lingshi += lingshi_gain
             from core import GameState
+
             GameState.get().run_data.kill_count = game.kill_count
             GameState.get().run_data.lingshi = game.player.lingshi
             GameState.get().run_data.current_node_index = game.current_level
             meta.total_levels_cleared += 1
             from achievement import unlock_achievement
+
             for aid, thresh in [("level_5", 5), ("level_10", 10)]:
                 if meta.total_levels_cleared >= thresh:
                     unlock_achievement(aid)
             EventBus.emit(LEVEL_CLEAR, lingshi=lingshi_gain, daoyun=daoyun_gain, reward_type=reward_type)
-            EventBus.emit(NODE_COMPLETE, node_type=nt, node_index=game.current_level, lingshi=lingshi_gain, daoyun=daoyun_gain)
+            EventBus.emit(
+                NODE_COMPLETE, node_type=nt, node_index=game.current_level, lingshi=lingshi_gain, daoyun=daoyun_gain
+            )
             if reward_type != "fabao":
                 game.level_clear_pending = True
                 game.level_clear_lingshi = lingshi_gain
@@ -256,6 +291,7 @@ class CombatSystem:
                 game._death_daoyun = 0
                 meta.total_deaths += 1
                 from achievement import unlock_achievement
+
                 for aid, thresh in [("death_1", 1), ("death_3", 3)]:
                     if meta.total_deaths >= thresh:
                         unlock_achievement(aid)
@@ -313,12 +349,15 @@ class CombatSystem:
             CombatSystem._draw_ui(screen, game)
             game.combat_log.draw(screen)
             from shop import draw as draw_shop
+
             shop_state = {
                 "fabao_id": getattr(game, "_shop_fabao_id", None),
                 "daoyun_bought": getattr(game, "_shop_daoyun_bought", False),
                 "refresh_remaining": getattr(game, "_shop_refresh_remaining", 1),
             }
-            draw_shop(screen, game.player, game.player.lingshi, shop_state, meta.unlocked_accessories, meta.accessory_slots)
+            draw_shop(
+                screen, game.player, game.player.lingshi, shop_state, meta.unlocked_accessories, meta.accessory_slots
+            )
             return
 
         # 开局饰品三选一（外出时）
@@ -352,11 +391,11 @@ class CombatSystem:
         # UI
         CombatSystem._draw_ui(screen, game)
         game.combat_log.draw(screen)
-        
+
         # 伤害飘字
-        if hasattr(game, 'damage_text_mgr'):
+        if hasattr(game, "damage_text_mgr"):
             game.damage_text_mgr.draw(screen)
-        
+
         # 人物页面（C 打开，ESC 关闭）
         if getattr(game, "char_panel_open", False):
             CombatSystem._draw_char_panel(screen, game)
@@ -379,6 +418,12 @@ class CombatSystem:
             overlay.fill((180, 50, 40))
             screen.blit(overlay, (0, 0))
 
+        # 屏幕震动：最后一步，scroll 整个画面
+        if hasattr(game, "screen_shake") and game.screen_shake.is_shaking():
+            ox, oy = game.screen_shake.get_offset()
+            if ox != 0 or oy != 0:
+                screen.scroll(ox, oy)
+
     @staticmethod
     def _draw_ui(screen, game):
         font = get_font(24)
@@ -393,7 +438,8 @@ class CombatSystem:
         remaining = len(game.enemies) + len(getattr(game, "pending_enemies", []))
         remain_text = font.render(
             f"剩余敌人: {remaining}" if not game.route_options else "选择路线 [1-3]",
-            True, (100, 255, 150) if game.demo_mode else COLOR_UI
+            True,
+            (100, 255, 150) if game.demo_mode else COLOR_UI,
         )
         screen.blit(daoyun_text, (10, 10))
         screen.blit(lingshi_text, (10, 30))
@@ -410,6 +456,7 @@ class CombatSystem:
         pid = getattr(game.player, "partner_id", None)
         if pid:
             from partner import get_partner
+
             p = get_partner(pid)
             if p:
                 blv = getattr(game.player, "partner_bond_level", 0)
@@ -456,7 +503,9 @@ class CombatSystem:
             cd_x = x1
             cd_y = y + bar_h + 20
             pygame.draw.rect(screen, (40, 45, 55), (cd_x, cd_y, bar_w, bar_h))
-            pygame.draw.rect(screen, (80, 140, 200) if cd_remain <= 0 else (90, 90, 100), (cd_x, cd_y, int(bar_w * cd_pct), bar_h))
+            pygame.draw.rect(
+                screen, (80, 140, 200) if cd_remain <= 0 else (90, 90, 100), (cd_x, cd_y, int(bar_w * cd_pct), bar_h)
+            )
             pygame.draw.rect(screen, COLOR_HUD_BORDER, (cd_x, cd_y, bar_w, bar_h), 1)
             cd_label = "就绪" if cd_remain <= 0 else f"{cd_remain:.1f}s"
             cd_txt = font_small.render(f"E {cd_label}", True, (160, 190, 220))
@@ -591,8 +640,8 @@ class CombatSystem:
     def _draw_fabao_reward_selection(screen, game):
         """过关法宝奖励：三选一，双法宝时可选替换主/副"""
         from attribute import ATTR_COLORS
+
         """过关法宝奖励：三选一，双法宝时可选替换主/副"""
-        from attribute import ATTR_COLORS
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
         overlay.fill((25, 30, 45))
@@ -733,7 +782,7 @@ class CombatSystem:
             desc = font_small.render(acc.desc, True, (180, 180, 180))
             screen.blit(desc, (rect.x + (rect.w - desc.get_width()) // 2, rect.y + 32))
         n = len(opts)
-        key_hint = "/".join(str(i+1) for i in range(n)) + " 键或点击选择"
+        key_hint = "/".join(str(i + 1) for i in range(n)) + " 键或点击选择"
         hint = font_small.render(key_hint, True, (160, 160, 160))
         h_rect = hint.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50))
         screen.blit(hint, h_rect)
@@ -741,11 +790,12 @@ class CombatSystem:
     @staticmethod
     def _draw_route_selection(screen, game):
         """绘制传送门样式的路线入口，奖励倾向由选路时抽取（对标星座战士）"""
-        from village import draw_portal, PORTAL_COLOR, PORTAL_HOVER
+        from village import PORTAL_COLOR, PORTAL_HOVER, draw_portal
+
         font = get_font(20)
         for i, opt in enumerate(game.route_options):
             level_id, rect, name = opt[0], opt[1], opt[2]
-            reward_type = opt[3] if len(opt) > 3 else None
+            opt[3] if len(opt) > 3 else None
             reward_hint = opt[4] if len(opt) > 4 else None
             is_hover = rect.colliderect(game.player.rect)
             nt = get_node_type(level_id)
@@ -766,7 +816,7 @@ class CombatSystem:
             else:
                 c, h = PORTAL_COLOR, PORTAL_HOVER
             sublabel = reward_hint if reward_hint else get_node_reward(level_id)
-            draw_portal(screen, rect, f"{i+1}.{name}", c, h, is_hover, sublabel=sublabel)
+            draw_portal(screen, rect, f"{i + 1}.{name}", c, h, is_hover, sublabel=sublabel)
 
         hint = font.render("走向传送门选择路线 或 按 1-3 键", True, (180, 180, 180))
         screen.blit(hint, (ARENA_X, ARENA_Y + ARENA_H - 25))

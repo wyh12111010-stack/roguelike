@@ -4,7 +4,9 @@ pygame 精灵表/序列帧加载工具。
 
 注意：AI 生成的精灵图各帧可能存在中间轴不一致，绘制时需用 get_content_center 对齐。
 """
+
 import os
+
 import pygame
 
 
@@ -50,12 +52,12 @@ def load_sequence(directory: str, frame_count: int, prefix: str = "frame") -> li
 def load_sprite_sheet_grid(path: str, cols: int = 2, rows: int = 2) -> list:
     """
     加载网格精灵表。
-    
+
     常用布局：
     - 2×2 = 4 帧（简单动画）
     - 8×4 = 32 帧（流畅动画）
     - 4×8 = 32 帧（流畅动画）
-    
+
     顺序：从左到右，从上到下。
     """
     sheet = pygame.image.load(path)
@@ -73,7 +75,7 @@ def load_sprite_sheet_grid(path: str, cols: int = 2, rows: int = 2) -> list:
     return frames
 
 
-def load_sprite_sheet(path: str, frame_w: int, frame_h: int = None, frame_count: int = None) -> list:
+def load_sprite_sheet(path: str, frame_w: int, frame_h: int | None = None, frame_count: int | None = None) -> list:
     """
     加载横向排列的精灵表。
     frame_count 不指定时，按宽度自动计算。
@@ -95,11 +97,11 @@ def load_sprite_sheet(path: str, frame_w: int, frame_h: int = None, frame_count:
 def play_animation(frames: list, anim_timer: float, fps: float = 8, loop: bool = True) -> int:
     """
     根据 anim_timer 返回当前帧索引。
-    
+
     fps: 动画播放速率（帧/秒）
     - 4 帧动画推荐: fps=4-6
     - 32 帧动画推荐: fps=8（流畅且不过快）
-    
+
     示例：
         # 每帧更新 anim_timer
         anim_timer += dt  # dt 是帧间隔时间（秒）

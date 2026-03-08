@@ -5,8 +5,9 @@
 用法: python tools/sprite_preview.py
 支持：拖拽图片到窗口、点击「选择图片」按钮
 """
-import sys
+
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -71,12 +72,13 @@ def open_file_dialog():
     try:
         import tkinter as tk
         from tkinter import filedialog
+
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
         path = filedialog.askopenfilename(
             title="选择精灵图",
-            filetypes=[("PNG 图片", "*.png"), ("所有图片", "*.png *.jpg *.jpeg *.gif *.bmp"), ("所有文件", "*.*")]
+            filetypes=[("PNG 图片", "*.png"), ("所有图片", "*.png *.jpg *.jpeg *.gif *.bmp"), ("所有文件", "*.*")],
         )
         root.destroy()
         return path if path else None
@@ -151,7 +153,12 @@ def main():
                 p = e.file
                 if isinstance(p, bytes):
                     p = p.decode("utf-8", errors="ignore")
-                if p and (p.lower().endswith(".png") or p.lower().endswith(".jpg") or p.lower().endswith(".gif") or p.lower().endswith(".bmp")):
+                if p and (
+                    p.lower().endswith(".png")
+                    or p.lower().endswith(".jpg")
+                    or p.lower().endswith(".gif")
+                    or p.lower().endswith(".bmp")
+                ):
                     try_load(p)
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 if btn_rect.collidepoint(e.pos):
@@ -189,7 +196,9 @@ def main():
         btn_color = (0, 122, 204) if not btn_rect.collidepoint(pygame.mouse.get_pos()) else (30, 142, 224)
         pygame.draw.rect(screen, btn_color, btn_rect, border_radius=6)
         btn_txt = font.render("选择图片", True, (255, 255, 255))
-        screen.blit(btn_txt, (btn_rect.centerx - btn_txt.get_width() // 2, btn_rect.centery - btn_txt.get_height() // 2))
+        screen.blit(
+            btn_txt, (btn_rect.centerx - btn_txt.get_width() // 2, btn_rect.centery - btn_txt.get_height() // 2)
+        )
 
         # 文件信息
         y_info = 130
@@ -199,7 +208,6 @@ def main():
                 name = name[:17] + "..."
             info = font_small.render(f"已加载: {name}", True, (180, 220, 180))
             screen.blit(info, (15, y_info))
-            layout_info = f"{layout} 1x{frame_count}" if layout == "row" else f"{layout} {cols}x{rows}"
             info2 = font_small.render(f"{len(frames)} 帧 | 2×2", True, (150, 150, 155))
             screen.blit(info2, (15, y_info + 20))
         elif error_msg:
@@ -227,7 +235,11 @@ def main():
 
             align_status = "对齐" if align_pivot else "原始"
             status = "暂停" if paused else "播放"
-            bar = font_small.render(f"帧 {idx + 1}/{len(frames)} | FPS {fps} | A键切换对齐 | {align_status} | {status}", True, (180, 180, 185))
+            bar = font_small.render(
+                f"帧 {idx + 1}/{len(frames)} | FPS {fps} | A键切换对齐 | {align_status} | {status}",
+                True,
+                (180, 180, 185),
+            )
             screen.blit(bar, (anim_rect.x + 10, anim_rect.bottom - 25))
         else:
             prompt = font.render("请拖拽图片或点击「选择图片」", True, (130, 130, 135))

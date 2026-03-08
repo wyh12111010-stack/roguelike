@@ -1,6 +1,6 @@
 """可配置按键：默认值、显示名、查询工具。"""
-import pygame
 
+import pygame
 
 DEFAULT_KEYBINDS = {
     "move_up": pygame.K_w,
