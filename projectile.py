@@ -52,7 +52,47 @@ class Projectile:
     def draw(self, screen):
         if self.dead:
             return
-        pygame.draw.circle(screen, COLOR_PROJECTILE, (int(self.x), int(self.y)), self.radius)
+        ix, iy = int(self.x), int(self.y)
+        color = _attr_color(self.attr, COLOR_PROJECTILE)
+        glow = _glow_color(color)
+        # 拖尾
+        speed = math.sqrt(self.vx * self.vx + self.vy * self.vy)
+        if speed > 10:
+            nx, ny = -self.vx / speed, -self.vy / speed
+            for i in range(3):
+                tx = int(self.x + nx * (i + 1) * 6)
+                ty = int(self.y + ny * (i + 1) * 6)
+                tr = max(2, self.radius - i * 2)
+                s = pygame.Surface((tr * 2, tr * 2), pygame.SRCALPHA)
+                pygame.draw.circle(s, (*glow, max(0, 100 - i * 35)), (tr, tr), tr)
+                screen.blit(s, (tx - tr, ty - tr))
+        # 外发光
+        gr = self.radius + 4
+        gs = pygame.Surface((gr * 2, gr * 2), pygame.SRCALPHA)
+        pygame.draw.circle(gs, (*glow, 60), (gr, gr), gr)
+        screen.blit(gs, (ix - gr, iy - gr))
+        # 核心
+        pygame.draw.circle(screen, color, (ix, iy), self.radius)
+        pygame.draw.circle(screen, (255, 255, 255), (ix - 2, iy - 2), max(1, self.radius // 3))
+
+
+def _attr_color(attr, default):
+    """根据五行属性返回颜色"""
+    if attr is None:
+        return default
+    name = getattr(attr, "name", "")
+    return {
+        "FIRE": (255, 100, 50),
+        "WATER": (80, 160, 255),
+        "WOOD": (80, 220, 100),
+        "METAL": (200, 210, 230),
+        "EARTH": (200, 160, 80),
+    }.get(name, default)
+
+
+def _glow_color(color):
+    """从基础色生成柔和发光色"""
+    return (min(255, color[0] + 40), min(255, color[1] + 40), min(255, color[2] + 40))
 
 
 class MeleeSlash:
@@ -99,10 +139,25 @@ class MeleeSlash:
     def draw(self, screen):
         if self.dead:
             return
-        min(1, self.age / self.duration)
-        end_x = self.x + math.cos(self.angle) * self.length
-        end_y = self.y + math.sin(self.angle) * self.length
-        pygame.draw.line(screen, (255, 255, 150), (self.x, self.y), (end_x, end_y), 4)
+        progress = min(1.0, self.age / self.duration)
+        color = _attr_color(self.attr, (255, 255, 150))
+        glow = _glow_color(color)
+        # 扇形弧线
+        start_a = self.angle - self.arc_half
+        sweep = self.arc_half * 2 * progress
+        steps = max(4, int(sweep * 6))
+        r = self.length * (0.5 + 0.5 * progress)
+        # 绘制填充扇形（半透明）
+        pts = [(int(self.x), int(self.y))]
+        for i in range(steps + 1):
+            a = start_a + sweep * i / steps
+            pts.append((int(self.x + math.cos(a) * r), int(self.y + math.sin(a) * r)))
+        if len(pts) >= 3:
+            fade = max(0, int(180 * (1 - progress)))
+            s = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
+            pygame.draw.polygon(s, (*color, fade), pts)
+            screen.blit(s, (0, 0))
+            pygame.draw.polygon(screen, glow, pts, 2)
 
 
 class ParabolicProjectile:
@@ -167,10 +222,27 @@ class ParabolicProjectile:
     def draw(self, screen):
         if self.dead:
             return
+        ix, iy = int(self.x), int(self.y)
+        color = _attr_color(self.attr, (180, 160, 80))
         if self._exploded:
-            pygame.draw.circle(screen, (200, 180, 100), (int(self.x), int(self.y)), self.aoe_radius, 2)
+            # 爆炸环
+            s = pygame.Surface((self.aoe_radius * 2, self.aoe_radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*color, 40), (self.aoe_radius, self.aoe_radius), self.aoe_radius)
+            pygame.draw.circle(s, (*_glow_color(color), 120), (self.aoe_radius, self.aoe_radius), self.aoe_radius, 3)
+            screen.blit(s, (ix - self.aoe_radius, iy - self.aoe_radius))
             return
-        pygame.draw.circle(screen, (180, 160, 80), (int(self.x), int(self.y)), self.radius)
+        # 飞行中：发光弹
+        glow = _glow_color(color)
+        gr = self.radius + 5
+        gs = pygame.Surface((gr * 2, gr * 2), pygame.SRCALPHA)
+        pygame.draw.circle(gs, (*glow, 50), (gr, gr), gr)
+        screen.blit(gs, (ix - gr, iy - gr))
+        pygame.draw.circle(screen, color, (ix, iy), self.radius)
+        # 落点预告（影子）
+        ground = ARENA_Y + ARENA_H - 20
+        shadow_y = min(iy + 20, ground)
+        pygame.draw.ellipse(screen, (0, 0, 0, 60) if hasattr(pygame, 'SRCALPHA') else (40, 40, 40),
+                            (ix - 6, shadow_y, 12, 4))
 
 
 class FlameBeam:

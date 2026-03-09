@@ -511,6 +511,37 @@ class CombatSystem:
             cd_txt = font_small.render(f"E {cd_label}", True, (160, 190, 220))
             screen.blit(cd_txt, (cd_x, cd_y - 14))
 
+        # 连击计数器（右上角）
+        tracker = getattr(game, "stats_tracker", None)
+        if tracker:
+            combo = getattr(tracker, "current_combo", 0)
+            if combo >= 2:
+                # 字号随连击数增大
+                combo_size = min(48, 24 + combo * 2)
+                combo_font = get_font(combo_size)
+                # 颜色随连击数变化
+                if combo >= 20:
+                    combo_color = (255, 80, 80)  # 红色
+                elif combo >= 10:
+                    combo_color = (255, 180, 50)  # 橙色
+                elif combo >= 5:
+                    combo_color = (255, 255, 80)  # 黄色
+                else:
+                    combo_color = (200, 200, 200)  # 白色
+                combo_txt = combo_font.render(f"{combo} HIT", True, combo_color)
+                cx = SCREEN_WIDTH - combo_txt.get_width() - 20
+                cy = 20
+                # 背景
+                bg = pygame.Surface((combo_txt.get_width() + 12, combo_txt.get_height() + 4), pygame.SRCALPHA)
+                bg.fill((0, 0, 0, 100))
+                screen.blit(bg, (cx - 6, cy - 2))
+                screen.blit(combo_txt, (cx, cy))
+                # 最大连击（小字）
+                max_combo = getattr(tracker, "max_combo", 0)
+                if max_combo > combo:
+                    mc_txt = font_small.render(f"MAX {max_combo}", True, (140, 140, 140))
+                    screen.blit(mc_txt, (cx, cy + combo_txt.get_height() + 2))
+
     @staticmethod
     def _draw_char_panel(screen, game):
         """人物页面：灵根、法宝、饰品"""

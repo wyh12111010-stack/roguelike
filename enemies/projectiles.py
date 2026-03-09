@@ -5,7 +5,6 @@ import math
 import pygame
 
 from attribute import Attr, attr_from_str
-from enemy_sprites import load_enemy_sprite
 
 
 class EnemyProjectile:
@@ -57,17 +56,35 @@ class EnemyProjectile:
     def draw(self, screen):
         if self.dead:
             return
-        # 尝试加载精灵
-        sprite = load_enemy_sprite(self.ai_type)
-        if sprite:
-            # 绘制精灵
-            w, h = sprite.get_size()
-            x = int(self.x - w // 2)
-            y = int(self.y - h // 2)
-            screen.blit(sprite, (x, y))
-        else:
-            # 降级：绘制圆形
-            pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
+        ix, iy = int(self.x), int(self.y)
+        # 属性发光色
+        attr_colors = {
+            "FIRE": (255, 100, 50),
+            "WATER": (80, 160, 255),
+            "WOOD": (80, 220, 100),
+            "METAL": (200, 210, 230),
+            "EARTH": (200, 160, 80),
+        }
+        attr_name = getattr(self.attr, "name", "")
+        glow_c = attr_colors.get(attr_name, self.color)
+        # 外发光
+        gr = self.radius + 3
+        gs = pygame.Surface((gr * 2, gr * 2), pygame.SRCALPHA)
+        pygame.draw.circle(gs, (*glow_c, 50), (gr, gr), gr)
+        screen.blit(gs, (ix - gr, iy - gr))
+        # 核心
+        pygame.draw.circle(screen, self.color, (ix, iy), self.radius)
+        # 拖尾
+        speed = math.sqrt(self.vx * self.vx + self.vy * self.vy)
+        if speed > 10:
+            nx, ny = -self.vx / speed, -self.vy / speed
+            for i in range(2):
+                tx = int(self.x + nx * (i + 1) * 5)
+                ty = int(self.y + ny * (i + 1) * 5)
+                tr = max(2, self.radius - i * 2)
+                ts = pygame.Surface((tr * 2, tr * 2), pygame.SRCALPHA)
+                pygame.draw.circle(ts, (*self.color, max(0, 80 - i * 35)), (tr, tr), tr)
+                screen.blit(ts, (tx - tr, ty - tr))
 
 
 class AOEZone:
@@ -100,9 +117,20 @@ class AOEZone:
     def draw(self, screen):
         if self.dead:
             return
-        alpha = int(120 * (1 - self.age / self.duration))
-        s = pygame.Surface((self.radius * 2, self.radius * 2))
-        s.set_alpha(alpha)
-        s.fill(self.color[:3])
-        screen.blit(s, (self.x - self.radius, self.y - self.radius))
-        pygame.draw.circle(screen, (255, 100, 100), (int(self.x), int(self.y)), self.radius, 2)
+        ix, iy = int(self.x), int(self.y)
+        progress = self.age / self.duration if self.duration else 1
+        alpha = int(100 * (1 - progress))
+        r = self.radius
+        # 半透明填充圆
+        s = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+        c = self.color[:3]
+        pygame.draw.circle(s, (*c, alpha), (r, r), r)
+        screen.blit(s, (ix - r, iy - r))
+        # 边框（脉动效果）
+        pulse = 1.0 + 0.15 * math.sin(self.age * 8)
+        border_r = int(r * pulse)
+        border_alpha = min(255, alpha + 60)
+        pygame.draw.circle(screen, (*c[:3], min(255, border_alpha)), (ix, iy), border_r, 2)
+        # 内圈（伤害已触发则暗淡）
+        if self._hit:
+            pygame.draw.circle(screen, (100, 100, 100), (ix, iy), r // 2, 1)

@@ -182,16 +182,32 @@ class Enemy:
 
         font = get_font_small()
         label = TYPE_LABELS.get(self.enemy_type, "?")
-        txt = font.render(label, True, COLOR_TEXT_HEADING)
-        t_rect = txt.get_rect(center=(draw_rect.centerx, draw_rect.y - 12))
+        label_color = TYPE_COLORS.get(self.enemy_type, COLOR_TEXT_HEADING)
+        txt = font.render(label, True, label_color)
+        t_rect = txt.get_rect(center=(draw_rect.centerx, draw_rect.y - 14))
+        # 标签背景（提高可读性）
+        bg_r = t_rect.inflate(6, 2)
+        bg_s = pygame.Surface((bg_r.w, bg_r.h), pygame.SRCALPHA)
+        bg_s.fill((0, 0, 0, 120))
+        screen.blit(bg_s, bg_r.topleft)
         screen.blit(txt, t_rect)
-        # 血条
-        if self.health < self.max_health:
-            bar_w, bar_h = 24, 4
-            pygame.draw.rect(screen, (50, 50, 50), (draw_rect.x, draw_rect.y - 8, bar_w, bar_h))
-            pygame.draw.rect(
-                screen, (255, 0, 0), (draw_rect.x, draw_rect.y - 8, bar_w * self.health / self.max_health, bar_h)
-            )
+        # 血条（始终显示，受伤时变色）
+        bar_w = max(draw_rect.w, 28)
+        bar_h = 4
+        bar_x = draw_rect.centerx - bar_w // 2
+        bar_y = draw_rect.y - 7
+        hp_pct = self.health / self.max_health if self.max_health else 0
+        # 背景
+        pygame.draw.rect(screen, (30, 30, 30), (bar_x - 1, bar_y - 1, bar_w + 2, bar_h + 2))
+        # 血条颜色随血量变化
+        if hp_pct > 0.6:
+            hp_color = (80, 220, 80)
+        elif hp_pct > 0.3:
+            hp_color = (220, 180, 50)
+        else:
+            hp_color = (220, 50, 50)
+        pygame.draw.rect(screen, hp_color, (bar_x, bar_y, int(bar_w * hp_pct), bar_h))
+        pygame.draw.rect(screen, (100, 100, 100), (bar_x - 1, bar_y - 1, bar_w + 2, bar_h + 2), 1)
 
     def _set_telegraph(self, duration=MIN_TELEGRAPH_WINDOW, color=(255, 230, 120)):
         d = max(MIN_TELEGRAPH_WINDOW, duration)
