@@ -1,10 +1,12 @@
 """村子场景视觉升级 - 修仙风格"""
 
 import math
+import os
 
 import pygame
 
 from config import SCREEN_HEIGHT, SCREEN_WIDTH, get_font
+from config_assets import get_scene
 from ui_theme import (
     THEME_COLORS,
     AnimatedBackground,
@@ -20,6 +22,26 @@ from ui_theme import (
 # 全局背景实例
 _village_background = None
 _village_particles = []
+_village_bg_image: pygame.Surface | None = None
+_village_bg_loaded: bool = False
+
+
+def _load_village_bg():
+    """加载村庄场景背景图"""
+    global _village_bg_image, _village_bg_loaded
+    if _village_bg_loaded:
+        return _village_bg_image
+    _village_bg_loaded = True
+    try:
+        path = get_scene("village")
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert()
+            # 缩放到村庄世界大小（1200x700）
+            _village_bg_image = pygame.transform.smoothscale(img, (1200, 700))
+            return _village_bg_image
+    except Exception:
+        pass
+    return None
 
 
 def get_village_background():
@@ -59,13 +81,18 @@ def update_village_visual(dt):
 
 def draw_village_background(surface, camera_offset):
     """绘制村子背景"""
-    bg = get_village_background()
+    village_img = _load_village_bg()
 
-    # 创建临时大表面
-    bg_surface = pygame.Surface((1200, 700))
-    bg.draw(bg_surface)
+    if village_img:
+        # 使用实际背景图
+        bg_surface = village_img.copy()
+    else:
+        # 后备：程序化渐变背景
+        bg = get_village_background()
+        bg_surface = pygame.Surface((1200, 700))
+        bg.draw(bg_surface)
 
-    # 绘制仙气粒子
+    # 绘制仙气粒子（叠加在背景上）
     particle_surface = pygame.Surface((1200, 700), pygame.SRCALPHA)
     for particle in _village_particles:
         particle.draw(particle_surface)
@@ -314,6 +341,28 @@ def draw_selection_panel_enhanced(surface, items, choice, zone_rect, font, attr_
             surface.blit(full_txt, full_rect)
 
 
+# 对话框背景缓存
+_dialogue_frame: pygame.Surface | None = None
+_dialogue_frame_loaded: bool = False
+
+
+def _load_dialogue_frame():
+    """加载对话框背景图"""
+    global _dialogue_frame, _dialogue_frame_loaded
+    if _dialogue_frame_loaded:
+        return _dialogue_frame
+    _dialogue_frame_loaded = True
+    try:
+        path = os.path.join("assets", "ui", "dialogue_frame.png")
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert_alpha()
+            _dialogue_frame = pygame.transform.smoothscale(img, (600, 200))
+            return _dialogue_frame
+    except Exception:
+        pass
+    return None
+
+
 def draw_dialogue_enhanced(surface, npc_key, dialogue_text=None):
     """绘制增强版对话框"""
     from village_npc import NPC_DIALOGUES
@@ -327,8 +376,13 @@ def draw_dialogue_enhanced(surface, npc_key, dialogue_text=None):
     box_w, box_h = 600, 200
     box_rect = pygame.Rect((SCREEN_WIDTH - box_w) // 2, (SCREEN_HEIGHT - box_h) // 2, box_w, box_h)
 
-    # 绘制面板
-    draw_panel(surface, box_rect, glow=True)
+    # 尝试使用对话框背景图
+    frame = _load_dialogue_frame()
+    if frame:
+        surface.blit(frame, box_rect.topleft)
+    else:
+        # 后备：程序化面板
+        draw_panel(surface, box_rect, glow=True)
 
     # NPC 信息
     data = NPC_DIALOGUES.get(npc_key, {})

@@ -1,8 +1,33 @@
 """修仙风格 UI 主题系统 - 古风仙侠视觉"""
 
 import math
+import os
 
 import pygame
+
+# UI 素材缓存
+_ui_cache: dict[str, pygame.Surface | None] = {}
+_ui_loaded: set[str] = set()
+
+
+def _load_ui_asset(name: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+    """加载并缓存 UI 素材"""
+    cache_key = f"{name}_{size}" if size else name
+    if cache_key in _ui_loaded:
+        return _ui_cache.get(cache_key)
+    _ui_loaded.add(cache_key)
+    try:
+        path = os.path.join("assets", "ui", f"{name}.png")
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert_alpha()
+            if size:
+                img = pygame.transform.smoothscale(img, size)
+            _ui_cache[cache_key] = img
+            return img
+    except Exception:
+        pass
+    _ui_cache[cache_key] = None
+    return None
 
 # ==================== 配色方案 ====================
 # 主色调：青铜、朱砂、碧玉、金箔
@@ -184,11 +209,20 @@ class AnimatedBackground:
 # ==================== 面板绘制 ====================
 def draw_panel(surface, rect, title=None, glow=True):
     """绘制修仙风格面板"""
-    # 背景渐变
-    bg_gradient = create_gradient_surface(
-        rect.width, rect.height, THEME_COLORS["panel_bg"], (*THEME_COLORS["bg_deep"], 200)
-    )
-    surface.blit(bg_gradient, rect.topleft)
+    # 尝试使用面板背景纹理
+    panel_tex = _load_ui_asset("panel_bg", (rect.width, rect.height))
+    if panel_tex:
+        # 使用纹理背景（半透明叠加）
+        tex_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        tex_surf.blit(panel_tex, (0, 0))
+        tex_surf.set_alpha(220)
+        surface.blit(tex_surf, rect.topleft)
+    else:
+        # 后备：渐变背景
+        bg_gradient = create_gradient_surface(
+            rect.width, rect.height, THEME_COLORS["panel_bg"], (*THEME_COLORS["bg_deep"], 200)
+        )
+        surface.blit(bg_gradient, rect.topleft)
 
     # 光晕效果
     if glow:
@@ -202,6 +236,17 @@ def draw_panel(surface, rect, title=None, glow=True):
 
     # 古风边框
     draw_ancient_border(surface, rect, THEME_COLORS["panel_border"], 2, 10)
+
+    # 尝试绘制角落装饰图
+    corner_img = _load_ui_asset("border_corner")
+    if corner_img:
+        cs = min(24, rect.width // 6, rect.height // 6)
+        corner_small = pygame.transform.smoothscale(corner_img, (cs, cs))
+        # 四个角落（旋转放置）
+        surface.blit(corner_small, (rect.left, rect.top))
+        surface.blit(pygame.transform.flip(corner_small, True, False), (rect.right - cs, rect.top))
+        surface.blit(pygame.transform.flip(corner_small, False, True), (rect.left, rect.bottom - cs))
+        surface.blit(pygame.transform.flip(corner_small, True, True), (rect.right - cs, rect.bottom - cs))
 
     # 标题
     if title:
@@ -223,27 +268,35 @@ def draw_panel(surface, rect, title=None, glow=True):
 # ==================== 按钮绘制 ====================
 def draw_button(surface, rect, text, is_hover=False, is_active=False, icon=None):
     """绘制修仙风格按钮"""
-    # 按钮状态颜色
-    if is_active:
-        bg_color = THEME_COLORS["button_active"]
-        border_color = THEME_COLORS["text_highlight"]
-    elif is_hover:
-        bg_color = THEME_COLORS["button_hover"]
-        border_color = THEME_COLORS["panel_border"]
+    # 尝试使用按钮图片
+    btn_name = "button_hover" if (is_hover or is_active) else "button_normal"
+    btn_img = _load_ui_asset(btn_name, (rect.width, rect.height))
+
+    if btn_img:
+        surface.blit(btn_img, rect.topleft)
     else:
-        bg_color = THEME_COLORS["button_normal"]
-        border_color = THEME_COLORS["button_border"]
+        # 后备：程序化按钮
+        # 按钮状态颜色
+        if is_active:
+            bg_color = THEME_COLORS["button_active"]
+            border_color = THEME_COLORS["text_highlight"]
+        elif is_hover:
+            bg_color = THEME_COLORS["button_hover"]
+            border_color = THEME_COLORS["panel_border"]
+        else:
+            bg_color = THEME_COLORS["button_normal"]
+            border_color = THEME_COLORS["button_border"]
 
-    # 背景渐变
-    gradient = create_gradient_surface(rect.width, rect.height, bg_color, tuple(max(0, c - 20) for c in bg_color[:3]))
-    surface.blit(gradient, rect.topleft)
+        # 背景渐变
+        gradient = create_gradient_surface(rect.width, rect.height, bg_color, tuple(max(0, c - 20) for c in bg_color[:3]))
+        surface.blit(gradient, rect.topleft)
 
-    # 悬停光晕
-    if is_hover:
-        draw_glow(surface, rect.center, rect.width // 2, THEME_COLORS["immortal_gold"], 0.2)
+        # 悬停光晕
+        if is_hover:
+            draw_glow(surface, rect.center, rect.width // 2, THEME_COLORS["immortal_gold"], 0.2)
 
-    # 边框
-    pygame.draw.rect(surface, border_color, rect, 2)
+        # 边框
+        pygame.draw.rect(surface, border_color, rect, 2)
 
     # 文本
     from config import get_font

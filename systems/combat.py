@@ -1,5 +1,7 @@
 """战斗系统：战斗更新与绘制逻辑"""
 
+import os
+
 import pygame
 
 from config import (
@@ -21,6 +23,7 @@ from config import (
     SCREEN_WIDTH,
     get_font,
 )
+from config_assets import get_scene
 from core import EventBus
 from core.events import ENEMY_KILLED, LEVEL_CLEAR, NODE_COMPLETE, PLAYER_DEATH, SHOP_ENTER
 from levels import DEMO_NAMES, get_level_display, get_node_reward, get_node_type
@@ -35,6 +38,27 @@ from setting import (
     LINGSHI_PER_LEVEL,
 )
 from story import get_ending
+
+
+# 场景背景缓存
+_scene_bg_cache: dict[str, pygame.Surface | None] = {}
+
+
+def _load_scene_bg(scene_name: str) -> pygame.Surface | None:
+    """加载并缓存场景背景图"""
+    if scene_name in _scene_bg_cache:
+        return _scene_bg_cache[scene_name]
+    try:
+        path = get_scene(scene_name)
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert()
+            img = pygame.transform.smoothscale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            _scene_bg_cache[scene_name] = img
+            return img
+    except Exception:
+        pass
+    _scene_bg_cache[scene_name] = None
+    return None
 
 
 class CombatSystem:
@@ -308,12 +332,30 @@ class CombatSystem:
         """战斗场景绘制逻辑（scene==combat 分支）"""
         from config import COLOR_BG
 
-        screen.fill(COLOR_BG)
+        # 根据节点类型选择场景背景
+        node_type = get_node_type(game.current_level) if hasattr(game, "current_level") else "combat"
+        if node_type == "boss":
+            scene_name = "boss_room"
+        elif node_type == "event":
+            scene_name = "event"
+        else:
+            scene_name = "combat_arena"
+        bg = _load_scene_bg(scene_name)
 
-        # 绘制战斗框
-        arena_rect = pygame.Rect(ARENA_X, ARENA_Y, ARENA_W, ARENA_H)
-        pygame.draw.rect(screen, COLOR_ARENA, arena_rect)
-        pygame.draw.rect(screen, COLOR_ARENA_BORDER, arena_rect, 3)
+        if bg:
+            screen.blit(bg, (0, 0))
+            # 半透明竞技场覆盖层（让背景不会太亮影响可见度）
+            arena_rect = pygame.Rect(ARENA_X, ARENA_Y, ARENA_W, ARENA_H)
+            overlay = pygame.Surface((ARENA_W, ARENA_H), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 80))
+            screen.blit(overlay, (ARENA_X, ARENA_Y))
+            pygame.draw.rect(screen, COLOR_ARENA_BORDER, arena_rect, 3)
+        else:
+            screen.fill(COLOR_BG)
+            # 绘制战斗框（后备纯色方案）
+            arena_rect = pygame.Rect(ARENA_X, ARENA_Y, ARENA_W, ARENA_H)
+            pygame.draw.rect(screen, COLOR_ARENA, arena_rect)
+            pygame.draw.rect(screen, COLOR_ARENA_BORDER, arena_rect, 3)
 
         # 绘制敌人
         for e in game.enemies:
