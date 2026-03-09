@@ -27,25 +27,11 @@ _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_DIR = os.path.dirname(_PKG_DIR)
 ASSETS_DIR = os.path.join(_PROJECT_DIR, "assets")
 PLAYER_IDLE_PATH = os.path.join(ASSETS_DIR, "player_idle.png")
-PLAYER_DEATH_PATH = os.path.join(ASSETS_DIR, "player_death.png")
 PLAYER_SPRITE_SCALE = 0.075
 
-
-def _find_sprite_paths():
-    idle, death = PLAYER_IDLE_PATH, PLAYER_DEATH_PATH
-    if os.path.exists(idle) and os.path.exists(death):
-        return idle, death
-    nb_files = sorted(
-        (
-            os.path.join(ASSETS_DIR, f)
-            for f in os.listdir(ASSETS_DIR or "")
-            if f.startswith("nanobanana-edited-") and f.lower().endswith(".png")
-        ),
-        key=os.path.basename,
-    )
-    if len(nb_files) >= 2:
-        return nb_files[0], nb_files[1]
-    return idle, death
+# 死亡消散动画参数
+DEATH_DISSOLVE_DURATION = 1.2  # 消散总时长（秒）
+DEATH_PARTICLE_COUNT = 30  # 消散粒子数
 
 
 def _load_player_sprites():
@@ -56,13 +42,9 @@ def _load_player_sprites():
             img = pygame.image.load(PLAYER_IDLE_PATH).convert_alpha()
             idle_frames = [img]
             idle_pivots = [get_content_center(img)]
-            death_frames = idle_frames
-            death_pivots = idle_pivots
             return {
                 "idle": idle_frames,
-                "death": death_frames,
                 "idle_pivots": idle_pivots,
-                "death_pivots": death_pivots,
             }
     except Exception as e:
         print(f"加载主角精灵图失败: {e}")
@@ -220,26 +202,38 @@ class Player(PlayerCombat, PlayerInventory, PlayerMovement):
             else:
                 screen.blit(scaled, (sx, sy))
         elif sp and self.health <= 0:
+            # 粒子消散死亡效果：idle精灵逐渐透明 + 粒子扩散
             if self._death_anim_start is None:
                 self._death_anim_start = self.anim_timer
                 from particles import spawn_particles
 
                 cx, cy = self.rect.centerx, self.rect.centery
-                for _ in range(20):
+                for _ in range(DEATH_PARTICLE_COUNT):
                     spawn_particles(cx, cy, "death")
+
             elapsed = self.anim_timer - self._death_anim_start
-            frames = sp["death"]
-            pivots = sp["death_pivots"]
-            idx = min(len(frames) - 1, int(elapsed * 6))
-            f = frames[idx]
-            cx, cy = pivots[idx]
+            progress = min(1.0, elapsed / DEATH_DISSOLVE_DURATION)
+
+            # 使用idle精灵渐隐
+            frames = sp["idle"]
+            pivots = sp["idle_pivots"]
+            f = frames[0]
+            cx, cy = pivots[0]
             fw, fh = f.get_size()
             scale = PLAYER_SPRITE_SCALE
             sw, sh = int(fw * scale), int(fh * scale)
             scaled = pygame.transform.scale(f, (sw, sh))
-            sx = self.rect.centerx - int(cx * scale)
-            sy = self.rect.centery - int(cy * scale)
-            screen.blit(scaled, (sx, sy))
+
+            # 透明度从255逐渐到0
+            alpha = max(0, int(255 * (1.0 - progress)))
+            if alpha > 0:
+                faded = scaled.copy()
+                faded.set_alpha(alpha)
+                sx = self.rect.centerx - int(cx * scale)
+                sy = self.rect.centery - int(cy * scale)
+                # 轻微上浮效果
+                sy -= int(progress * 15)
+                screen.blit(faded, (sx, sy))
         else:
             pygame.draw.rect(screen, COLOR_PLAYER, self.rect)
             end_x = self.rect.centerx + math.cos(self.facing) * 25
