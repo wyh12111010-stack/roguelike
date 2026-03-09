@@ -3,9 +3,33 @@
 可以扩展为显示两个法宝（双法宝系统）
 """
 
+import os
+
 import pygame
 
+from config_assets import get_icon
 from ui.components import Colors, FontSize, Spacing, UIComponent, draw_text
+
+# 法宝图标缓存
+_fabao_icon_cache: dict[str, pygame.Surface | None] = {}
+
+
+def _load_fabao_icon(fabao_id, size=48):
+    """加载并缓存法宝图标"""
+    cache_key = f"{fabao_id}_{size}"
+    if cache_key in _fabao_icon_cache:
+        return _fabao_icon_cache[cache_key]
+    try:
+        path = get_icon("fabao", fabao_id)
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.smoothscale(img, (size, size))
+            _fabao_icon_cache[cache_key] = img
+            return img
+    except Exception:
+        pass
+    _fabao_icon_cache[cache_key] = None
+    return None
 
 
 class FabaoDisplay(UIComponent):
@@ -49,8 +73,6 @@ class FabaoDisplay(UIComponent):
         icon_x = self.x + 8 + offset
         icon_y = self.y + offset
 
-        # 绘制图标背景（占位符）
-        # TODO: 替换为实际图标图片
         icon_rect = pygame.Rect(icon_x, icon_y, scaled_size, scaled_size)
 
         # 根据属性选择背景颜色
@@ -62,13 +84,39 @@ class FabaoDisplay(UIComponent):
             "EARTH": Colors.EARTH,
         }.get(fabao.attr.name, Colors.TEXT_GRAY)
 
-        # 绘制图标背景
-        pygame.draw.rect(screen, attr_color, icon_rect)
+        # 暗色底板
+        bg = pygame.Surface((scaled_size, scaled_size), pygame.SRCALPHA)
+        pygame.draw.rect(bg, (20, 25, 35, 200), (0, 0, scaled_size, scaled_size), border_radius=4)
+        screen.blit(bg, (icon_x, icon_y))
+
+        # 尝试加载实际图标
+        icon_img = _load_fabao_icon(fabao.id, scaled_size)
+        if icon_img:
+            screen.blit(icon_img, (icon_x, icon_y))
+        else:
+            # 属性色块作为后备
+            fb = pygame.Surface((scaled_size - 8, scaled_size - 8), pygame.SRCALPHA)
+            pygame.draw.rect(fb, (*attr_color, 180), (0, 0, scaled_size - 8, scaled_size - 8), border_radius=3)
+            screen.blit(fb, (icon_x + 4, icon_y + 4))
 
         # 绘制边框（高亮）
         border_color = Colors.BORDER_GOLD if self.hover else Colors.BORDER_DARK
         border_width = 3 if self.hover else 2
-        pygame.draw.rect(screen, border_color, icon_rect, border_width)
+        pygame.draw.rect(screen, border_color, icon_rect, border_width, border_radius=4)
+
+        # 属性小标（右下角）
+        attr_sym = {"FIRE": "火", "WATER": "水", "WOOD": "木", "METAL": "金", "EARTH": "土"}.get(
+            fabao.attr.name, ""
+        )
+        if attr_sym:
+            tag_size = 14
+            tag_x = icon_x + scaled_size - tag_size - 1
+            tag_y = icon_y + scaled_size - tag_size - 1
+            tag_s = pygame.Surface((tag_size, tag_size), pygame.SRCALPHA)
+            pygame.draw.rect(tag_s, (*attr_color, 200), (0, 0, tag_size, tag_size), border_radius=2)
+            screen.blit(tag_s, (tag_x, tag_y))
+            draw_text(screen, attr_sym, tag_x + tag_size // 2, tag_y + tag_size // 2,
+                      8, Colors.TEXT_LIGHT, center=True)
 
         # 绘制法宝名称
         name_y = self.y + self.icon_size + 8

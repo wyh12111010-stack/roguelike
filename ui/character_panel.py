@@ -3,9 +3,32 @@
 参考小骨英雄的设计：左侧立绘，右侧信息
 """
 
+import os
+
 import pygame
 
 from ui.components import Colors, FontSize, Panel, Spacing, UIComponent, draw_text
+
+# 角色立绘缓存
+_portrait_cache: pygame.Surface | None = None
+_portrait_loaded: bool = False
+
+
+def _load_portrait():
+    """加载角色立绘（从 player_idle.png）"""
+    global _portrait_cache, _portrait_loaded
+    if _portrait_loaded:
+        return _portrait_cache
+    _portrait_loaded = True
+    try:
+        path = os.path.join("assets", "player_idle.png")
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert_alpha()
+            _portrait_cache = pygame.transform.smoothscale(img, (160, 160))
+            return _portrait_cache
+    except Exception:
+        pass
+    return None
 
 
 class CharacterPanel(UIComponent):
@@ -82,21 +105,52 @@ class CharacterPanel(UIComponent):
             screen, Colors.BORDER_GOLD, (self.x + Spacing.LG, line_y), (self.x + self.width - Spacing.LG, line_y), 2
         )
 
-        # 左侧：角色立绘区域（占位符）
+        # 左侧：角色立绘区域
         portrait_x = self.x + Spacing.XL
         portrait_y = line_y + Spacing.LG
         portrait_size = 180
 
-        pygame.draw.rect(screen, Colors.BORDER_DARK, (portrait_x, portrait_y, portrait_size, portrait_size), 2)
-        draw_text(
-            screen,
-            "角色立绘",
-            portrait_x + portrait_size // 2,
-            portrait_y + portrait_size // 2,
-            FontSize.SM,
-            Colors.TEXT_DARK,
-            center=True,
-        )
+        # 立绘背景（暗色带金边）
+        port_bg = pygame.Surface((portrait_size, portrait_size), pygame.SRCALPHA)
+        pygame.draw.rect(port_bg, (15, 18, 28, 200), (0, 0, portrait_size, portrait_size), border_radius=4)
+        screen.blit(port_bg, (portrait_x, portrait_y))
+
+        # 尝试加载实际立绘
+        portrait = _load_portrait()
+        if portrait:
+            # 居中放置（160×160 图片在 180×180 区域内）
+            px = portrait_x + (portrait_size - 160) // 2
+            py = portrait_y + (portrait_size - 160) // 2
+            screen.blit(portrait, (px, py))
+        else:
+            draw_text(
+                screen,
+                "角色立绘",
+                portrait_x + portrait_size // 2,
+                portrait_y + portrait_size // 2,
+                FontSize.SM,
+                Colors.TEXT_DARK,
+                center=True,
+            )
+
+        # 立绘边框
+        pygame.draw.rect(screen, Colors.BORDER_GOLD, (portrait_x, portrait_y, portrait_size, portrait_size), 2,
+                         border_radius=4)
+
+        # 角色名称（立绘下方）
+        name_y = portrait_y + portrait_size + 8
+        linggen_name = ""
+        if self.player.linggen:
+            linggen_name = {
+                "FIRE": "火灵根",
+                "WATER": "水灵根",
+                "WOOD": "木灵根",
+                "METAL": "金灵根",
+                "EARTH": "土灵根",
+            }.get(self.player.linggen.attr.name, "")
+        if linggen_name:
+            draw_text(screen, linggen_name, portrait_x + portrait_size // 2, name_y,
+                      FontSize.BASE, Colors.TEXT_GOLD, center=True)
 
         # 右侧：信息区域
         info_x = portrait_x + portrait_size + Spacing.XL
@@ -106,11 +160,17 @@ class CharacterPanel(UIComponent):
         self._draw_section(screen, "基础属性", info_x, info_y)
         info_y += 30
 
-        info_y = self._draw_stat(
-            screen, "生命", f"{int(self.player.health)}/{int(self.player.max_health)}", info_x, info_y, Colors.HP_RED
+        # HP bar inline
+        hp_pct = self.player.health / self.player.max_health if self.player.max_health else 0
+        info_y = self._draw_stat_bar(
+            screen, "生命", f"{int(self.player.health)}/{int(self.player.max_health)}",
+            info_x, info_y, Colors.HP_RED, Colors.HP_RED_BG, hp_pct
         )
-        info_y = self._draw_stat(
-            screen, "灵力", f"{int(self.player.mana)}/{int(self.player.max_mana)}", info_x, info_y, Colors.MP_BLUE
+        # MP bar inline
+        mp_pct = self.player.mana / self.player.max_mana if self.player.max_mana else 0
+        info_y = self._draw_stat_bar(
+            screen, "灵力", f"{int(self.player.mana)}/{int(self.player.max_mana)}",
+            info_x, info_y, Colors.MP_BLUE, Colors.MP_BLUE_BG, mp_pct
         )
         info_y = self._draw_stat(screen, "灵石", str(self.player.lingshi), info_x, info_y, Colors.LINGSHI_GOLD)
         info_y = self._draw_stat(screen, "道韵", str(self.player.daoyun), info_x, info_y, Colors.DAOYUN_JADE)
@@ -221,13 +281,39 @@ class CharacterPanel(UIComponent):
             info_y += 25
 
     def _draw_section(self, screen, title, x, y):
-        """绘制章节标题"""
+        """绘制章节标题（带装饰线）"""
         draw_text(screen, title, x, y, FontSize.LG, Colors.TEXT_GOLD)
-        # 下划线
-        pygame.draw.line(screen, Colors.BORDER_GOLD, (x, y + 22), (x + 200, y + 22), 1)
+        line_y = y + 23
+        pygame.draw.line(screen, Colors.BORDER_GOLD, (x, line_y), (x + 200, line_y), 1)
+        # 小菱形
+        dx = x + 204
+        pygame.draw.polygon(screen, Colors.BORDER_GOLD,
+                            [(dx, line_y), (dx + 3, line_y - 3), (dx + 6, line_y), (dx + 3, line_y + 3)])
 
     def _draw_stat(self, screen, label, value, x, y, color=Colors.TEXT_LIGHT):
         """绘制属性行"""
         draw_text(screen, f"{label}:", x + Spacing.SM, y, FontSize.SM, Colors.TEXT_GRAY)
         draw_text(screen, value, x + 100, y, FontSize.SM, color)
+        return y + 22
+
+    def _draw_stat_bar(self, screen, label, value_text, x, y, bar_color, bar_bg, pct):
+        """绘制带内嵌进度条的属性行"""
+        draw_text(screen, f"{label}:", x + Spacing.SM, y, FontSize.SM, Colors.TEXT_GRAY)
+
+        # 进度条
+        bar_x = x + 60
+        bar_w = 140
+        bar_h = 14
+        bar_y = y + 2
+
+        pygame.draw.rect(screen, bar_bg, (bar_x, bar_y, bar_w, bar_h), border_radius=2)
+        fill_w = max(0, int(bar_w * min(1.0, pct)))
+        if fill_w > 0:
+            pygame.draw.rect(screen, bar_color, (bar_x, bar_y, fill_w, bar_h), border_radius=2)
+        pygame.draw.rect(screen, Colors.BORDER_DARK, (bar_x, bar_y, bar_w, bar_h), 1, border_radius=2)
+
+        # 数值（条内居中）
+        draw_text(screen, value_text, bar_x + bar_w // 2, bar_y + bar_h // 2,
+                  FontSize.XS, Colors.TEXT_LIGHT, center=True)
+
         return y + 22
