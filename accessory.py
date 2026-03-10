@@ -49,7 +49,7 @@ ACCESSORY_LIST = [
     # === 正负并存饰品（参考 Tiny Rogues，20+ 个）===
     # 高伤害 + 负面
     Accessory("glass_core", "碎心核", "伤害+18%，生命-15", 34, 3, damage_pct=18, health_bonus=-15),
-    Accessory("glass_cannon", "玻璃大炮", "伤害+25%，生命上限-25", 40, 3, damage_pct=25, health_bonus=-25),
+    Accessory("glass_cannon", "碎星璃", "伤害+25%，生命上限-25", 40, 3, damage_pct=25, health_bonus=-25),
     Accessory("fragile_power", "脆弱之力", "伤害+30%，生命-30", 45, 3, damage_pct=30, health_bonus=-30),
     Accessory("berserker_rage", "狂暴之怒", "伤害+20%，攻速-15%", 38, 3, damage_pct=20, attack_speed_pct=-15),
     Accessory("heavy_strike", "沉重打击", "伤害+22%，移速-20%", 36, 3, damage_pct=22),  # 移速需要特殊处理
@@ -60,7 +60,7 @@ ACCESSORY_LIST = [
     # 高生命 + 负面
     Accessory("iron_shell", "镇岳甲", "生命+25，攻速-15%", 31, 3, health_bonus=25, attack_speed_pct=-15),
     Accessory("heavy_armor", "重甲护身", "生命+30，伤害-10%", 33, 3, health_bonus=30, damage_pct=-10),
-    Accessory("tank_core", "坦克核心", "生命+40，攻速-20%", 36, 3, health_bonus=40, attack_speed_pct=-20),
+    Accessory("tank_core", "磐石之核", "生命+40，攻速-20%", 36, 3, health_bonus=40, attack_speed_pct=-20),
     # 高灵力 + 负面
     Accessory("mana_burn", "焚灵坠", "伤害+5，灵力-20", 29, 3, damage_bonus=5, mana_bonus=-20),
     Accessory("mana_trade", "灵力交易", "攻速+15%，灵力-25", 32, 3, attack_speed_pct=15, mana_bonus=-25),

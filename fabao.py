@@ -52,7 +52,7 @@ FABAO_LIST = [
     Fabao("claw", "疾风爪", Attr.WOOD, True, 9, 0.26, 55, 0, ATTACK_ARC, "vine_bind", 13, 5.5),
     # === 重压流法宝（攻速慢、伤害高、一击制敌）===
     Fabao("hammer", "震天锤", Attr.EARTH, True, 40, 0.9, 55, 0, ATTACK_HEAVY, "earth_wall", 30, 12.0),
-    Fabao("cannon", "雷霆炮", Attr.FIRE, False, 35, 0.85, 280, 300, ATTACK_PARABOLIC, "flame_wave", 28, 11.0),
+    Fabao("cannon", "雷霆杵", Attr.FIRE, False, 35, 0.85, 280, 300, ATTACK_PARABOLIC, "flame_wave", 28, 11.0),
     Fabao("axe", "破军斧", Attr.METAL, True, 38, 0.88, 58, 0, ATTACK_HEAVY, "blade_storm", 32, 12.5),
     # === 范围流法宝（AOE 大、适合清小怪）===
     Fabao("fan", "寒冰扇", Attr.WATER, False, 14, 0.5, 250, 360, ATTACK_FAN, "water_prison", 20, 8.0),
